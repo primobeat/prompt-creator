@@ -35,15 +35,18 @@ export interface PromptExpansion {
 }
 
 export type StyleOption = 
-  | 'Soft & Fluffy' 
-  | 'Playful Pop' 
-  | 'Jelly Iridescent' 
-  | 'Glossy Glass'
-  | 'Candy Chrome'
-  | 'Frosted Mist'
-  | 'Clean Flat'
-  | 'Neo Plastic'
-  | 'Paper Craft';
+  | 'Line Art'
+  | '2D Vector'
+  | '2.5D Artwork'
+  | '3D Render'
+  | '3D Paper'
+  | 'Real Photo'
+  | 'Matte'
+  | 'Shiny'
+  | 'Glass'
+  | 'Day'
+  | 'Night'
+  | 'Mist';
 
 export async function expandPrompt(
   userIdea: string, 
@@ -55,7 +58,7 @@ export async function expandPrompt(
   ratio?: string
 ): Promise<PromptExpansion> {
   // AI Studio 환경과 일반 Vite/Vercel 환경 모두 지원
-  const apiKey = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY || "";
+  const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
   const ai = new GoogleGenAI({ apiKey });
   const model = "gemini-3-flash-preview";
   
@@ -63,8 +66,10 @@ export async function expandPrompt(
 너는 **'Prompt Creator'**야. 사용자의 아이디어를 분석하여 Mets만의 Soft & Fun 감성이 담긴 최적의 프롬프트를 생성하고 디자인 인사이트를 제공하는 것이 네 역할이야.
 
 [Mets Style Library]
-1. Material & Texture: Soft & Fluffy, Playful Pop, Jelly Iridescent, Glossy Glass, Candy Chrome, Frosted Mist, Clean Flat, Neo Plastic, Paper Craft.
-2. Color Palette & Mood: 사용자가 선택한 배경색, 오브젝트 색상, 무드를 조화롭게 사용할 것.
+1. Art Style: Line Art, 2D Vector, 2.5D Artwork, 3D Render, 3D Paper, Real Photo.
+2. Texture: Matte, Shiny, Glass.
+3. Lighting: Day, Night, Mist.
+4. Color Palette & Mood: 사용자가 선택한 배경색, 오브젝트 색상, 무드를 조화롭게 사용할 것.
 
 [Tasks]
 1. Generate Prompts: Midjourney (v6.0), DALL-E 3, Stable Diffusion.

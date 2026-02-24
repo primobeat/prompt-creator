@@ -9,7 +9,7 @@ import {
   Sparkles, Copy, Check, RefreshCw, Palette, Layout, Cloud, CloudSun, 
   Zap, Box, Droplets, Gem, Candy, Wind, Gamepad2, Layers, Plus, X, 
   Camera, Maximize, Image as ImageIcon, BarChart3, Activity, Thermometer, 
-  Layers as LayersIcon, Info, ChevronDown
+  Layers as LayersIcon, Info, ChevronDown, PenTool, Sun, Moon, Scissors, Square
 } from 'lucide-react';
 import { HexColorPicker } from 'react-colorful';
 import { 
@@ -111,27 +111,30 @@ export default function App() {
 
   const styleCategories: { title: string; options: { label: StyleOption; icon: any }[] }[] = [
     {
-      title: 'Art Form',
+      title: 'Art Style',
       options: [
-        { label: 'Clean Flat', icon: Box },
-        { label: 'Neo Plastic', icon: Gamepad2 },
-        { label: 'Paper Craft', icon: Layers },
+        { label: 'Line Art', icon: PenTool },
+        { label: '2D Vector', icon: Square },
+        { label: '2.5D Artwork', icon: Layers },
+        { label: '3D Render', icon: Box },
+        { label: '3D Paper', icon: Scissors },
+        { label: 'Real Photo', icon: Camera },
       ]
     },
     {
-      title: 'Material & Texture',
+      title: 'Texture',
       options: [
-        { label: 'Soft & Fluffy', icon: CloudSun },
-        { label: 'Playful Pop', icon: Zap },
-        { label: 'Jelly Iridescent', icon: Droplets },
+        { label: 'Matte', icon: Cloud },
+        { label: 'Shiny', icon: Droplets },
+        { label: 'Glass', icon: Gem },
       ]
     },
     {
-      title: 'Atmosphere & Lighting',
+      title: 'Lighting',
       options: [
-        { label: 'Glossy Glass', icon: Gem },
-        { label: 'Candy Chrome', icon: Candy },
-        { label: 'Frosted Mist', icon: Wind },
+        { label: 'Day', icon: Sun },
+        { label: 'Night', icon: Moon },
+        { label: 'Mist', icon: Wind },
       ]
     }
   ];
@@ -274,7 +277,7 @@ export default function App() {
             {/* Group A: Core Concept */}
             <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-white ml-1">
+                <label className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-white ml-1">
                   Your Idea
                 </label>
                 <textarea
@@ -310,7 +313,7 @@ export default function App() {
               <div className="space-y-6">
                 {styleCategories.map((category) => (
                   <div key={category.title} className="space-y-3">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 ml-1">
+                    <span className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-white/60 ml-1">
                       {category.title}
                     </span>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -346,7 +349,7 @@ export default function App() {
               <div className="grid grid-cols-1 gap-6">
                 {/* Color Mood */}
                 <div className="space-y-3">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 ml-1">
+                  <span className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-white/60 ml-1">
                     Color Mood
                   </span>
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 p-4 rounded-2xl bg-white/5 border border-white/5">
@@ -364,7 +367,7 @@ export default function App() {
                         {selectedMood === mood.name && (
                           <Check className="absolute inset-0 m-auto w-4 h-4 text-white drop-shadow-md" />
                         )}
-                        <span className="absolute -bottom-6 left-0 right-0 text-[8px] font-bold uppercase tracking-tighter text-white/40 text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold uppercase tracking-tighter text-white drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
                           {mood.name}
                         </span>
                       </button>
@@ -374,7 +377,7 @@ export default function App() {
 
                 {/* Background Color */}
                 <div className="space-y-3">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 ml-1">
+                  <span className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-white/60 ml-1">
                     Background Color
                   </span>
                   <div className="flex flex-wrap justify-between items-center p-4 rounded-2xl bg-white/5 border border-white/5">
@@ -422,7 +425,7 @@ export default function App() {
 
                 {/* Object Color */}
                 <div className="space-y-3">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 ml-1">
+                  <span className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-white/60 ml-1">
                     Object Color
                   </span>
                   <div className="flex flex-wrap justify-between items-center p-4 rounded-2xl bg-white/5 border border-white/5">
@@ -510,153 +513,143 @@ export default function App() {
                   exit={{ opacity: 0, x: 20 }}
                   className="space-y-4 h-full"
                 >
-                {/* Midjourney Prompt Card */}
-                <div className="glass-card p-7 rounded-[2.5rem]">
-                  <div className="flex items-center justify-between mb-5">
+                  {/* Insight Dashboard */}
+                  <div className="p-8 rounded-[2.5rem] bg-[#0071e3]/15 border border-[#0071e3]/30 backdrop-blur-3xl shadow-2xl space-y-8">
                     <div className="flex items-center gap-2.5">
-                      <Cloud className="text-white w-4 h-4" />
-                      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white">Midjourney (v6.0)</span>
+                      <Activity className="text-white w-4 h-4" />
+                      <span className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-white">Insight Dashboard</span>
                     </div>
-                    <button 
-                      onClick={() => handleCopy(result.midjourney, 'mj')}
-                      className="p-2.5 hover:bg-white/10 rounded-xl transition-colors text-white"
-                    >
-                      {copiedId === 'mj' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  <p className="text-xs font-mono bg-black/40 p-5 rounded-2xl border border-white/10 leading-relaxed break-words text-white backdrop-blur-md">
-                    {result.midjourney}
-                  </p>
-                </div>
 
-                {/* DALL-E 3 Prompt Card */}
-                <div className="glass-card p-7 rounded-[2.5rem]">
-                  <div className="flex items-center justify-between mb-5">
-                    <div className="flex items-center gap-2.5">
-                      <Sparkles className="text-white w-4 h-4" />
-                      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white">DALL-E 3</span>
-                    </div>
-                    <button 
-                      onClick={() => handleCopy(result.dalle, 'dalle')}
-                      className="p-2.5 hover:bg-white/10 rounded-xl transition-colors text-white"
-                    >
-                      {copiedId === 'dalle' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  <p className="text-xs font-mono bg-black/40 p-5 rounded-2xl border border-white/10 leading-relaxed break-words text-white backdrop-blur-md">
-                    {result.dalle}
-                  </p>
-                </div>
-
-                {/* Stable Diffusion Card */}
-                <div className="glass-card p-7 rounded-[2.5rem]">
-                  <div className="flex items-center justify-between mb-5">
-                    <div className="flex items-center gap-2.5">
-                      <Zap className="text-white w-4 h-4" />
-                      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white">Stable Diffusion (SDXL)</span>
-                    </div>
-                    <button 
-                      onClick={() => handleCopy(result.stableDiffusion, 'sd')}
-                      className="p-2.5 hover:bg-white/10 rounded-xl transition-colors text-white"
-                    >
-                      {copiedId === 'sd' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  <p className="text-xs font-mono bg-black/40 p-5 rounded-2xl border border-white/10 leading-relaxed break-words text-white backdrop-blur-md">
-                    {result.stableDiffusion}
-                  </p>
-                </div>
-
-                {/* Design Intent Card */}
-                <div className="p-7 rounded-[2.5rem] bg-[#0071e3]/15 border border-[#0071e3]/30 backdrop-blur-3xl shadow-2xl">
-                  <div className="flex items-center gap-2.5 mb-4">
-                    <Layout className="text-white w-4 h-4" />
-                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white">Design Intent</span>
-                  </div>
-                  <p className="text-white text-xs leading-relaxed font-medium">
-                    {result.designIntent}
-                  </p>
-                </div>
-
-                {/* Insight Dashboard */}
-                <div className="p-8 rounded-[2.5rem] bg-[#0071e3]/15 border border-[#0071e3]/30 backdrop-blur-3xl shadow-2xl space-y-8">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white">Insight Dashboard</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Visual Balance Radar */}
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/40">
-                        Visual Balance
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {/* Visual Balance Radar */}
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/40">
+                          Visual Balance
+                        </div>
+                        <div className="h-[200px] w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
+                              { subject: 'Vibrancy', A: result.insight.visual_balance.vibrancy },
+                              { subject: 'Minimalism', A: result.insight.visual_balance.minimalism },
+                              { subject: 'Complexity', A: result.insight.visual_balance.complexity },
+                              { subject: 'Softness', A: result.insight.visual_balance.softness },
+                              { subject: 'Futurism', A: result.insight.visual_balance.futurism },
+                            ]}>
+                              <PolarGrid stroke="#ffffff20" />
+                              <PolarAngleAxis dataKey="subject" tick={{ fill: '#ffffff60', fontSize: 8 }} />
+                              <Radar name="Balance" dataKey="A" stroke="#0071e3" fill="#0071e3" fillOpacity={0.5} />
+                            </RadarChart>
+                          </ResponsiveContainer>
+                        </div>
                       </div>
-                      <div className="h-[200px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
-                            { subject: 'Vibrancy', A: result.insight.visual_balance.vibrancy },
-                            { subject: 'Minimalism', A: result.insight.visual_balance.minimalism },
-                            { subject: 'Complexity', A: result.insight.visual_balance.complexity },
-                            { subject: 'Softness', A: result.insight.visual_balance.softness },
-                            { subject: 'Futurism', A: result.insight.visual_balance.futurism },
-                          ]}>
-                            <PolarGrid stroke="#ffffff20" />
-                            <PolarAngleAxis dataKey="subject" tick={{ fill: '#ffffff60', fontSize: 8 }} />
-                            <Radar name="Balance" dataKey="A" stroke="#0071e3" fill="#0071e3" fillOpacity={0.5} />
-                          </RadarChart>
-                        </ResponsiveContainer>
+
+                      {/* Texture Density Bar */}
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/40">
+                          Texture Density
+                        </div>
+                        <div className="h-[200px] w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={[
+                              { name: 'Reflectivity', value: result.insight.texture_density.reflectivity },
+                              { name: 'Transparency', value: result.insight.texture_density.transparency },
+                              { name: 'Roughness', value: result.insight.texture_density.roughness },
+                            ]} layout="vertical">
+                              <XAxis type="number" hide domain={[0, 100]} />
+                              <YAxis dataKey="name" type="category" tick={{ fill: '#ffffff60', fontSize: 8 }} width={80} />
+                              <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ backgroundColor: '#1a1a1a', border: 'none', borderRadius: '8px', fontSize: '10px' }} />
+                              <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                                { [0, 1, 2].map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={['#0071e3', '#00d1ff', '#00ffcc'][index]} />
+                                ))}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Texture Density Bar */}
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/40">
-                        Texture Density
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex flex-col gap-1">
+                        <div className="flex items-center gap-1.5 text-[8px] font-bold uppercase tracking-widest text-white/40">
+                          Temperature
+                        </div>
+                        <span className="text-xs font-bold text-white uppercase">{result.insight.tone_manner.temperature}</span>
                       </div>
-                      <div className="h-[200px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={[
-                            { name: 'Reflectivity', value: result.insight.texture_density.reflectivity },
-                            { name: 'Transparency', value: result.insight.texture_density.transparency },
-                            { name: 'Roughness', value: result.insight.texture_density.roughness },
-                          ]} layout="vertical">
-                            <XAxis type="number" hide domain={[0, 100]} />
-                            <YAxis dataKey="name" type="category" tick={{ fill: '#ffffff60', fontSize: 8 }} width={80} />
-                            <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ backgroundColor: '#1a1a1a', border: 'none', borderRadius: '8px', fontSize: '10px' }} />
-                            <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                              { [0, 1, 2].map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={['#0071e3', '#00d1ff', '#00ffcc'][index]} />
-                              ))}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
+                      <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex flex-col gap-1">
+                        <div className="flex items-center gap-1.5 text-[8px] font-bold uppercase tracking-widest text-white/40">
+                          Dynamism
+                        </div>
+                        <span className="text-xs font-bold text-white uppercase">{result.insight.tone_manner.dynamism}</span>
                       </div>
+                    </div>
+
+                    <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-2">
+                      <div className="flex items-center gap-1.5 text-[9px] font-display font-bold uppercase tracking-widest text-white/60">
+                        Design Intent
+                      </div>
+                      <p className="text-[11px] text-white/80 leading-relaxed italic">
+                        "{result.designIntent}"
+                      </p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex flex-col gap-1">
-                      <div className="flex items-center gap-1.5 text-[8px] font-bold uppercase tracking-widest text-white/40">
-                        Temperature
+                  {/* Midjourney Prompt Card */}
+                  <div className="glass-card p-7 rounded-[2.5rem]">
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="flex items-center gap-2.5">
+                        <Cloud className="text-white w-4 h-4" />
+                        <span className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-white">Midjourney (v6.0)</span>
                       </div>
-                      <span className="text-xs font-bold text-white uppercase">{result.insight.tone_manner.temperature}</span>
+                      <button 
+                        onClick={() => handleCopy(result.midjourney, 'mj')}
+                        className="p-2.5 hover:bg-white/10 rounded-xl transition-colors text-white"
+                      >
+                        {copiedId === 'mj' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      </button>
                     </div>
-                    <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex flex-col gap-1">
-                      <div className="flex items-center gap-1.5 text-[8px] font-bold uppercase tracking-widest text-white/40">
-                        Dynamism
-                      </div>
-                      <span className="text-xs font-bold text-white uppercase">{result.insight.tone_manner.dynamism}</span>
-                    </div>
-                  </div>
-
-                  <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-2">
-                    <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-white/60">
-                      Director's Comment
-                    </div>
-                    <p className="text-[11px] text-white/80 leading-relaxed italic">
-                      "{result.insight.designer_comment}"
+                    <p className="text-xs font-mono bg-black/40 p-5 rounded-2xl border border-white/10 leading-relaxed break-words text-white backdrop-blur-md">
+                      {result.midjourney}
                     </p>
                   </div>
-                </div>
+
+                  {/* DALL-E 3 Prompt Card */}
+                  <div className="glass-card p-7 rounded-[2.5rem]">
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="flex items-center gap-2.5">
+                        <Sparkles className="text-white w-4 h-4" />
+                        <span className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-white">DALL-E 3</span>
+                      </div>
+                      <button 
+                        onClick={() => handleCopy(result.dalle, 'dalle')}
+                        className="p-2.5 hover:bg-white/10 rounded-xl transition-colors text-white"
+                      >
+                        {copiedId === 'dalle' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <p className="text-xs font-mono bg-black/40 p-5 rounded-2xl border border-white/10 leading-relaxed break-words text-white backdrop-blur-md">
+                      {result.dalle}
+                    </p>
+                  </div>
+
+                  {/* Stable Diffusion Card */}
+                  <div className="glass-card p-7 rounded-[2.5rem]">
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="flex items-center gap-2.5">
+                        <Zap className="text-white w-4 h-4" />
+                        <span className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-white">Stable Diffusion (SDXL)</span>
+                      </div>
+                      <button 
+                        onClick={() => handleCopy(result.stableDiffusion, 'sd')}
+                        className="p-2.5 hover:bg-white/10 rounded-xl transition-colors text-white"
+                      >
+                        {copiedId === 'sd' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <p className="text-xs font-mono bg-black/40 p-5 rounded-2xl border border-white/10 leading-relaxed break-words text-white backdrop-blur-md">
+                      {result.stableDiffusion}
+                    </p>
+                  </div>
               </motion.div>
             ) : (
               <motion.div
