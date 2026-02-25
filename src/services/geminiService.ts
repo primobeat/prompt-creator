@@ -48,14 +48,89 @@ export type StyleOption =
   | 'Night'
   | 'Mist';
 
+export interface ImageAnalysis {
+  camera: string;
+  ratio: string;
+  artStyle: StyleOption;
+  texture: StyleOption;
+  lighting: StyleOption;
+  bgColors: string[];
+  objColors: string[];
+}
+
+export async function analyzeImage(image: string): Promise<ImageAnalysis> {
+  const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
+  const ai = new GoogleGenAI({ apiKey });
+  const model = "gemini-3-flash-preview";
+
+  const [mimeType, base64Data] = image.split(',');
+  const mime = mimeType.match(/:(.*?);/)?.[1] || 'image/png';
+
+  const systemInstruction = `
+너는 이미지 분석 전문가야. 제공된 이미지를 분석하여 다음 카테고리에 가장 잘 어울리는 값을 추출해줘.
+
+[Categories & Allowed Values]
+1. camera: Macro, Isometric, Low Angle, Eye Level, Wide Shot, Top Down
+2. ratio: 1:1, 4:5, 16:9, 9:16, 3:2, 2:3
+3. artStyle: Line Art, 2D Vector, 2.5D Artwork, 3D Render, 3D Paper, Real Photo
+4. texture: Matte, Shiny, Glass
+5. lighting: Day, Night, Mist
+6. bgColors: Array of Hex color codes (e.g., ["#FFFFFF", "#000000"])
+7. objColors: Array of Hex color codes (e.g., ["#FF0000", "#00FF00"])
+
+반드시 JSON 형식으로 응답할 것.
+`;
+
+  const response = await ai.models.generateContent({
+    model: model,
+    contents: {
+      parts: [
+        {
+          inlineData: {
+            data: base64Data || image,
+            mimeType: mime
+          }
+        },
+        { text: "이 이미지의 스타일 설정을 분석해줘." }
+      ]
+    },
+    config: {
+      systemInstruction: systemInstruction,
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          camera: { type: Type.STRING },
+          ratio: { type: Type.STRING },
+          artStyle: { type: Type.STRING },
+          texture: { type: Type.STRING },
+          lighting: { type: Type.STRING },
+          bgColors: { 
+            type: Type.ARRAY,
+            items: { type: Type.STRING }
+          },
+          objColors: { 
+            type: Type.ARRAY,
+            items: { type: Type.STRING }
+          },
+        },
+        required: ["camera", "ratio", "artStyle", "texture", "lighting", "bgColors", "objColors"],
+      }
+    }
+  });
+
+  return JSON.parse(response.text || "{}") as ImageAnalysis;
+}
+
 export async function expandPrompt(
   userIdea: string, 
   options: StyleOption[] = [], 
-  bgColor?: string, 
-  objectColor?: string, 
-  mood?: string,
+  bgColors: string[] = [], 
+  objectColors: string[] = [], 
   camera?: string,
-  ratio?: string
+  ratio?: string,
+  lang: 'en' | 'ko' = 'ko',
+  image?: string // Base64 image data
 ): Promise<PromptExpansion> {
   // AI Studio 환경과 일반 Vite/Vercel 환경 모두 지원
   const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
@@ -63,21 +138,21 @@ export async function expandPrompt(
   const model = "gemini-3-flash-preview";
   
   const systemInstruction = `
-너는 **'Prompt Creator'**야. 사용자의 아이디어를 분석하여 Mets만의 Soft & Fun 감성이 담긴 최적의 프롬프트를 생성하고 디자인 인사이트를 제공하는 것이 네 역할이야.
+너는 **'Prompt Creator'**야. 사용자의 아이디어를 분석하여 Soft & Fun 감성이 담긴 최적의 프롬프트를 생성하고 디자인 인사이트를 제공하는 것이 네 역할이야.
 
-[Mets Style Library]
+[Style Library]
 1. Art Style: Line Art, 2D Vector, 2.5D Artwork, 3D Render, 3D Paper, Real Photo.
 2. Texture: Matte, Shiny, Glass.
 3. Lighting: Day, Night, Mist.
 4. Color Palette & Mood: 사용자가 선택한 배경색, 오브젝트 색상, 무드를 조화롭게 사용할 것.
 
 [Tasks]
-1. Generate Prompts: Midjourney (v6.0), DALL-E 3, Stable Diffusion.
+1. Generate Prompts: Midjourney (v6.0), DALL-E 3, Stable Diffusion. (항상 영문으로 생성)
 2. Design Insight: 
    - Visual Balance (0-100): Vibrancy, Minimalism, Complexity, Softness, Futurism.
    - Tone & Manner: Temperature (warm/cool), Dynamism (low/medium/high).
    - Texture Density: Reflectivity, Transparency, Roughness.
-   - Designer Comment: 전문적인 디자인 코멘트 (한글).
+   - Design Intent & Designer Comment: 사용자가 선택한 언어(${lang === 'ko' ? '한국어' : '영어'})로 작성할 것.
 
 [Output Format]
 반드시 JSON 형식으로 응답할 것.
@@ -88,14 +163,24 @@ export async function expandPrompt(
       {
         text: `사용자 아이디어: "${userIdea}"
 선택된 스타일 옵션: [${options.join(', ')}]
-무드: ${mood || '지정 안됨'}
-배경색: ${bgColor || '지정 안됨'}
-오브젝트 색상: ${objectColor || '지정 안됨'}
+배경색: ${bgColors.length > 0 ? bgColors.join(', ') : '지정 안됨'}
+오브젝트 색상: ${objectColors.length > 0 ? objectColors.join(', ') : '지정 안됨'}
 카메라 각도: ${camera || '지정 안됨'}
 비율: ${ratio || '지정 안됨'}`,
       },
     ],
   };
+
+  if (image) {
+    const [mimeType, base64Data] = image.split(',');
+    const mime = mimeType.match(/:(.*?);/)?.[1] || 'image/png';
+    contents.parts.push({
+      inlineData: {
+        data: base64Data || image,
+        mimeType: mime
+      }
+    });
+  }
 
   const response = await ai.models.generateContent({
     model: model,
