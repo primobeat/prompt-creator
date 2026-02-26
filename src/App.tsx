@@ -166,12 +166,13 @@ export default function App() {
         Warm: 'Warm'
       },
       cameraOpts: {
-        'Macro': 'Macro',
+        'Satellite View': 'Satellite View',
         'Isometric': 'Isometric',
-        'Low Angle': 'Low Angle',
+        'High Angle': 'High Angle',
         'Eye Level': 'Eye Level',
-        'Wide Shot': 'Wide Shot',
-        'Top Down': 'Top Down'
+        'Profile View': 'Profile View',
+        'Low Angle': 'Low Angle',
+        'Extreme Close-Up': 'Extreme Close-Up'
       },
       forging: "Forging Your Vision..."
     },
@@ -222,12 +223,13 @@ export default function App() {
         Warm: '웜'
       },
       cameraOpts: {
-        'Macro': '매크로',
+        'Satellite View': '새틀라이트 뷰',
         'Isometric': '아이소메트릭',
-        'Low Angle': '로우 앵글',
+        'High Angle': '하이 앵글',
         'Eye Level': '아이 레벨',
-        'Wide Shot': '와이드 샷',
-        'Top Down': '탑 다운'
+        'Profile View': '프로필 뷰',
+        'Low Angle': '로우 앵글',
+        'Extreme Close-Up': '익스트림 클로즈업'
       },
       forging: "비전을 분석 중입니다..."
     }
@@ -276,7 +278,7 @@ export default function App() {
     { name: 'Pink', value: '#FF1493' },
   ];
 
-  const getClosestPaletteColor = (hex: string) => {
+  const getMappedColor = (hex: string) => {
     const r1 = parseInt(hex.slice(1, 3), 16);
     const g1 = parseInt(hex.slice(3, 5), 16);
     const b1 = parseInt(hex.slice(5, 7), 16);
@@ -299,10 +301,11 @@ export default function App() {
       }
     });
 
-    return closest;
+    // If distance is small enough (e.g., < 60), use palette color. Otherwise use original hex.
+    return minDistance < 60 ? closest : hex;
   };
 
-  const cameraOptions = ['Macro', 'Isometric', 'Low Angle', 'Eye Level', 'Wide Shot', 'Top Down'];
+  const cameraOptions = ['Satellite View', 'Isometric', 'High Angle', 'Eye Level', 'Profile View', 'Low Angle', 'Extreme Close-Up'];
   const ratioOptions = ['1:1', '4:5', '16:9', '9:16', '3:2', '2:3'];
 
   const toggleOption = (option: StyleOption) => {
@@ -334,13 +337,19 @@ export default function App() {
             setSelectedCamera(analysis.camera);
             setSelectedRatio(analysis.ratio);
             
-            // Map analyzed colors to closest palette colors
-            const mappedBg = (analysis.bgColors || []).map(c => getClosestPaletteColor(c));
-            const mappedObj = (analysis.objColors || []).map(c => getClosestPaletteColor(c));
+            // Map analyzed colors
+            const mappedBg = (analysis.bgColors || []).map(c => getMappedColor(c));
+            const mappedObj = (analysis.objColors || []).map(c => getMappedColor(c));
             
             // Use Set to remove duplicates after mapping
             setSelectedBgColors(Array.from(new Set(mappedBg)));
             setSelectedObjectColors(Array.from(new Set(mappedObj)));
+
+            // If there's a custom color, set it to the customColor state for the picker
+            const customBg = mappedBg.find(c => !paletteColors.some(pc => pc.value.toLowerCase() === c.toLowerCase()));
+            const customObj = mappedObj.find(c => !paletteColors.some(pc => pc.value.toLowerCase() === c.toLowerCase()));
+            if (customBg) setCustomColor(customBg);
+            else if (customObj) setCustomColor(customObj);
             
             // Set selected options (Art Style, Texture, Lighting)
             const newOptions: StyleOption[] = [];
@@ -431,6 +440,17 @@ export default function App() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [activePickerType]);
 
+  const activeCustomBg = selectedBgColors.find(c => !paletteColors.some(pc => pc.value.toLowerCase() === c.toLowerCase()));
+  const activeCustomObj = selectedObjectColors.find(c => !paletteColors.some(pc => pc.value.toLowerCase() === c.toLowerCase()));
+
+  const isLightColor = (hex: string) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness > 155;
+  };
+
   return (
     <div className="relative min-h-screen flex flex-col items-center">
       {/* Background Container */}
@@ -509,75 +529,6 @@ export default function App() {
                   onChange={(e) => setIdea(e.target.value)}
                   placeholder={t.placeholder}
                   className="w-full h-32 p-6 rounded-2xl bg-white/[0.05] border-2 border-white/40 focus:border-white/80 focus:bg-white/[0.08] outline-none transition-all text-base placeholder:text-white/30 resize-none backdrop-blur-xl text-white"
-                />
-              </div>
-
-              {/* Reference Image Upload */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-1.5 ml-1">
-                  <ImageIcon className="w-3 h-3 text-white" />
-                  <label className="text-[11px] font-sans font-bold uppercase tracking-[0.25em] text-white">
-                    {t.refImage}
-                  </label>
-                </div>
-                <div 
-                  className={`relative group h-32 rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center gap-2 overflow-hidden ${
-                    referenceImage ? 'border-white/40 bg-white/5' : 'border-white/20 hover:border-white/40 bg-white/[0.02]'
-                  }`}
-                >
-                  {analyzing && (
-                    <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
-                      <RefreshCw className="w-6 h-6 text-white animate-spin" />
-                      <span className="text-[10px] uppercase tracking-[0.2em] text-white font-bold animate-pulse">
-                        {t.analyzing}
-                      </span>
-                    </div>
-                  )}
-                  {referenceImage ? (
-                    <>
-                      <img src={referenceImage} className="absolute inset-0 w-full h-full object-cover opacity-40" alt="Reference" />
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={handleRemoveImage}
-                          className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <ImageIcon className="w-6 h-6 text-white/20 group-hover:text-white/40 transition-colors" />
-                      <span className="text-[10px] uppercase tracking-widest text-white/30 group-hover:text-white/50 transition-colors px-4 text-center">
-                        {t.uploadDesc}
-                      </span>
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        onChange={handleImageUpload}
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                      />
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Camera & Ratio */}
-              <div className="grid grid-cols-2 gap-4">
-                <CustomDropdown 
-                  label={t.camera} 
-                  value={t.cameraOpts[selectedCamera as keyof typeof t.cameraOpts] || selectedCamera} 
-                  options={cameraOptions} 
-                  displayOptions={cameraOptions.map(opt => t.cameraOpts[opt as keyof typeof t.cameraOpts] || opt)}
-                  onChange={setSelectedCamera} 
-                  icon={Camera}
-                />
-                <CustomDropdown 
-                  label={t.ratio} 
-                  value={selectedRatio} 
-                  options={ratioOptions} 
-                  onChange={setSelectedRatio} 
-                  icon={Maximize}
                 />
               </div>
             </div>
@@ -673,13 +624,20 @@ export default function App() {
                       <button
                         onClick={() => setActivePickerType(activePickerType === 'bg' ? null : 'bg')}
                         className={`group relative w-8 h-8 rounded-full transition-all duration-300 flex items-center justify-center border-2 ${
-                          activePickerType === 'bg'
-                            ? 'border-transparent bg-white/20 ring-2 ring-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)]' 
+                          activePickerType === 'bg' || activeCustomBg
+                            ? 'border-transparent ring-2 ring-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)]' 
                             : 'border-white/20 hover:border-white/40 hover:scale-110'
                         }`}
+                        style={{ 
+                          backgroundColor: activeCustomBg || (activePickerType === 'bg' ? customColor : 'rgba(255,255,255,0.1)') 
+                        }}
                         title="Custom Background Color"
                       >
-                        <Plus className="w-4 h-4 text-white/40 group-hover:text-white/60" />
+                        {activeCustomBg ? (
+                          <Check className={`w-4 h-4 ${isLightColor(activeCustomBg) ? 'text-black' : 'text-white'}`} />
+                        ) : (
+                          <Plus className="w-4 h-4 text-white/40 group-hover:text-white/60" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -728,17 +686,99 @@ export default function App() {
                       <button
                         onClick={() => setActivePickerType(activePickerType === 'object' ? null : 'object')}
                         className={`group relative w-8 h-8 rounded-full transition-all duration-300 flex items-center justify-center border-2 ${
-                          activePickerType === 'object'
-                            ? 'border-transparent bg-white/20 ring-2 ring-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)]' 
+                          activePickerType === 'object' || activeCustomObj
+                            ? 'border-transparent ring-2 ring-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)]' 
                             : 'border-white/20 hover:border-white/40 hover:scale-110'
                         }`}
+                        style={{ 
+                          backgroundColor: activeCustomObj || (activePickerType === 'object' ? customColor : 'rgba(255,255,255,0.1)') 
+                        }}
                         title="Custom Object Color"
                       >
-                        <Plus className="w-4 h-4 text-white/40 group-hover:text-white/60" />
+                        {activeCustomObj ? (
+                          <Check className={`w-4 h-4 ${isLightColor(activeCustomObj) ? 'text-black' : 'text-white'}`} />
+                        ) : (
+                          <Plus className="w-4 h-4 text-white/40 group-hover:text-white/60" />
+                        )}
                       </button>
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="h-px bg-white/10 w-full" />
+
+            {/* Group D: Camera & Ratio */}
+            <div className="grid grid-cols-2 gap-4">
+              <CustomDropdown 
+                label={t.camera} 
+                value={t.cameraOpts[selectedCamera as keyof typeof t.cameraOpts] || selectedCamera} 
+                options={cameraOptions} 
+                displayOptions={cameraOptions.map(opt => t.cameraOpts[opt as keyof typeof t.cameraOpts] || opt)}
+                onChange={setSelectedCamera} 
+                icon={Camera}
+              />
+              <CustomDropdown 
+                label={t.ratio} 
+                value={selectedRatio} 
+                options={ratioOptions} 
+                onChange={setSelectedRatio} 
+                icon={Maximize}
+              />
+            </div>
+
+            {/* Divider */}
+            <div className="h-px bg-white/10 w-full" />
+
+            {/* Group E: Reference Image */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5 ml-1">
+                <ImageIcon className="w-3 h-3 text-white" />
+                <label className="text-[11px] font-sans font-bold uppercase tracking-[0.25em] text-white">
+                  {t.refImage}
+                </label>
+              </div>
+              <div 
+                className={`relative group h-32 rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center gap-2 overflow-hidden ${
+                  referenceImage ? 'border-white/40 bg-white/5' : 'border-white/20 hover:border-white/40 bg-white/[0.02]'
+                }`}
+              >
+                {analyzing && (
+                  <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
+                    <RefreshCw className="w-6 h-6 text-white animate-spin" />
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-white font-bold animate-pulse">
+                      {t.analyzing}
+                    </span>
+                  </div>
+                )}
+                {referenceImage ? (
+                  <>
+                    <img src={referenceImage} className="absolute inset-0 w-full h-full object-cover opacity-40" alt="Reference" />
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={handleRemoveImage}
+                        className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <ImageIcon className="w-6 h-6 text-white/20 group-hover:text-white/40 transition-colors" />
+                    <span className="text-[10px] uppercase tracking-widest text-white/30 group-hover:text-white/50 transition-colors px-4 text-center">
+                      {t.uploadDesc}
+                    </span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handleImageUpload}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                  </>
+                )}
               </div>
             </div>
 

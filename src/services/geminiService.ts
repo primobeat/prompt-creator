@@ -70,7 +70,7 @@ export async function analyzeImage(image: string): Promise<ImageAnalysis> {
 너는 이미지 분석 전문가야. 제공된 이미지를 분석하여 다음 카테고리에 가장 잘 어울리는 값을 추출해줘.
 
 [Categories & Allowed Values]
-1. camera: Macro, Isometric, Low Angle, Eye Level, Wide Shot, Top Down
+1. camera: Satellite View, Isometric, High Angle, Eye Level, Profile View, Low Angle, Extreme Close-Up
 2. ratio: 1:1, 4:5, 16:9, 9:16, 3:2, 2:3
 3. artStyle: Line Art, 2D Vector, 2.5D Artwork, 3D Render, 3D Paper, Real Photo
 4. texture: Matte, Shiny, Glass
