@@ -16,12 +16,26 @@
   }
 }
 
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.3; transform: scale(1.1); }
+  50% { opacity: 0.5; transform: scale(1.15); }
+}
+
+@keyframes grid-scroll {
+  0% { background-position: 0 0; }
+  100% { background-position: 50px 50px; }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 10s ease-in-out infinite;
+}
+
+.animate-grid-scroll {
+  animation: grid-scroll 20s linear infinite;
+}
+
 .glass-card {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  @apply bg-white/5 backdrop-blur-3xl border border-white/10 shadow-2xl;
 }
 
 .minimal-card {

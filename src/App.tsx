@@ -454,23 +454,39 @@ export default function App() {
   return (
     <div className="relative min-h-screen flex flex-col items-center">
       {/* Background Container */}
-      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-[#111]">
-        {/* Simpler, Brighter Monotone Desert */}
+      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-[#020205]">
+        {/* Futuristic Tech Background */}
         <div className="absolute inset-0">
           <img 
-            src="https://images.unsplash.com/photo-1473580044384-7ba9967e16a0?q=80&w=2560&auto=format&fit=crop" 
-            alt="Simple Desert"
-            className="w-full h-full object-cover grayscale brightness-[0.55] contrast-[1.4] scale-105"
+            src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2560&auto=format&fit=crop" 
+            alt="Futuristic Tech"
+            className="w-full h-full object-cover opacity-70 scale-110 animate-pulse-slow"
             referrerPolicy="no-referrer"
           />
         </div>
         
+        {/* Futuristic Scrolling Grid Overlay with Blue Tint */}
+        <div className="absolute inset-0 opacity-[0.25] animate-grid-scroll" 
+          style={{ 
+            backgroundImage: `linear-gradient(to right, rgba(0,123,255,0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,123,255,0.2) 1px, transparent 1px)`,
+            backgroundSize: '50px 50px'
+          }} 
+        />
+
+        {/* Atmospheric Blue/Purple Glows */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(0,113,227,0.15)_0%,transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,rgba(0,180,255,0.15)_0%,transparent_50%)]" />
+
         {/* Subtle Grain Texture */}
         <div className="absolute inset-0 opacity-[0.05] mix-blend-overlay pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
         
-        {/* Refined Gradient Overlays */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/70" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_20%,black_100%)] opacity-40" />
+        {/* Refined Gradient Overlays - Less dark to show more image */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)]" />
+        
+        {/* Intense Glowing Accents */}
+        <div className="absolute top-[-5%] left-[-5%] w-[50%] h-[50%] bg-blue-600/20 blur-[140px] rounded-full animate-pulse" />
+        <div className="absolute bottom-[-5%] right-[-5%] w-[50%] h-[50%] bg-cyan-600/20 blur-[140px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
       </div>
 
       <div className="relative z-10 w-full flex flex-col items-center p-6 md:p-12 min-h-screen">
@@ -513,7 +529,7 @@ export default function App() {
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="space-y-6 glass-card p-8 rounded-[2.5rem] h-fit"
+            className="space-y-6 bg-white/[0.03] backdrop-blur-3xl border border-white/10 p-8 rounded-[2.5rem] h-fit shadow-2xl"
           >
             {/* Group A: Core Concept */}
             <div className="space-y-6">
@@ -528,7 +544,7 @@ export default function App() {
                   value={idea}
                   onChange={(e) => setIdea(e.target.value)}
                   placeholder={t.placeholder}
-                  className="w-full h-32 p-6 rounded-2xl bg-white/[0.05] border-2 border-white/40 focus:border-white/80 focus:bg-white/[0.08] outline-none transition-all text-base placeholder:text-white/30 resize-none backdrop-blur-xl text-white"
+                  className="w-full h-32 p-6 rounded-2xl bg-white/[0.05] border-2 border-white/40 focus:border-white/80 focus:bg-white/[0.08] outline-none transition-all text-base placeholder:text-white/30 resize-none text-white"
                 />
               </div>
             </div>
@@ -560,7 +576,7 @@ export default function App() {
                             className={`flex items-center gap-2.5 px-4 py-3 rounded-xl text-[11px] font-normal transition-all border ${
                               isSelected 
                                 ? 'bg-white border-white text-black shadow-[0_0_20px_rgba(255,255,255,0.3)]' 
-                                : 'bg-white/5 border-white/5 text-white hover:border-white/20 backdrop-blur-md'
+                                : 'bg-white/5 border-white/5 text-white hover:border-white/20'
                             }`}
                           >
                             <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-black' : 'text-white'}`} />

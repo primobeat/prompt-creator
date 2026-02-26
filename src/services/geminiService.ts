@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 
 export interface VisualBalance {
   vibrancy: number;
@@ -56,6 +56,36 @@ export interface ImageAnalysis {
   lighting: StyleOption;
   bgColors: string[];
   objColors: string[];
+}
+
+export async function generateWallpaper(prompt: string, aspectRatio: "1:1" | "3:4" | "4:3" | "9:16" | "16:9" = "16:9"): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
+  const ai = new GoogleGenAI({ apiKey });
+  
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash-image',
+    contents: {
+      parts: [
+        {
+          text: prompt,
+        },
+      ],
+    },
+    config: {
+      imageConfig: {
+        aspectRatio: aspectRatio,
+      },
+    },
+  });
+
+  for (const part of response.candidates?.[0]?.content?.parts || []) {
+    if (part.inlineData) {
+      const base64EncodeString: string = part.inlineData.data;
+      return `data:image/png;base64,${base64EncodeString}`;
+    }
+  }
+  
+  throw new Error("No image generated");
 }
 
 export async function analyzeImage(image: string): Promise<ImageAnalysis> {
