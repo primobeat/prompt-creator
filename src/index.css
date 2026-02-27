@@ -34,47 +34,8 @@
   animation: grid-scroll 20s linear infinite;
 }
 
-@keyframes rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.neon-flow {
-  position: relative;
-  border-radius: 2.5rem; /* Matched to bottom container */
-  overflow: hidden;
-  padding: 1px;
-}
-
-.neon-flow::before {
-  content: '';
-  position: absolute;
-  width: 400%;
-  height: 400%;
-  top: -150%;
-  left: -150%;
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    transparent 355deg,
-    rgba(0, 209, 255, 0.4) 358deg,
-    #00d1ff 359.8deg,
-    transparent 360deg
-  );
-  animation: rotate 6s linear infinite;
-  filter: blur(0.5px);
-}
-
-.neon-flow-inner {
-  position: relative;
-  border-radius: inherit;
-  background: rgba(255, 255, 255, 0.03); /* Matched to bottom container */
-  backdrop-filter: blur(40px);
-  z-index: 1;
-}
-
 .glass-card {
-  @apply bg-white/5 backdrop-blur-3xl border border-white/10;
+  @apply bg-white/5 backdrop-blur-3xl border border-white/10 shadow-2xl;
 }
 
 .minimal-card {
