@@ -174,7 +174,7 @@ export default function App() {
         'Low Angle': 'Low Angle',
         'Extreme Close-Up': 'Extreme Close-Up'
       },
-      forging: "Forging Your Vision..."
+      forging: "Refining your prompt..."
     },
     ko: {
       subtitle: "클릭만으로 완성하는 고퀄리티 프롬프트.",
@@ -231,7 +231,7 @@ export default function App() {
         'Low Angle': '로우 앵글',
         'Extreme Close-Up': '익스트림 클로즈업'
       },
-      forging: "비전을 분석 중입니다..."
+      forging: "프롬프트를 정교하게 다듬는 중..."
     }
   }[lang];
 
@@ -454,39 +454,23 @@ export default function App() {
   return (
     <div className="relative min-h-screen flex flex-col items-center">
       {/* Background Container */}
-      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-[#020205]">
-        {/* Futuristic Tech Background */}
-        <div className="absolute inset-0">
-          <img 
-            src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2560&auto=format&fit=crop" 
-            alt="Futuristic Tech"
-            className="w-full h-full object-cover opacity-70 scale-110 animate-pulse-slow"
-            referrerPolicy="no-referrer"
-          />
-        </div>
+      <div 
+        className="fixed inset-0 -z-10 bg-no-repeat bg-cover bg-[#020205]"
+        style={{
+          backgroundImage: `url('https://github.com/primobeat/prompt-creator/blob/main/u6997844369_A_hyper-realistic_profile_view_of_a_cyberpunk_wom_5915a2c6-0c39-48d5-a497-c36672a0e063_1.png?raw=true')`,
+          backgroundPosition: 'right center',
+          backgroundAttachment: 'fixed'
+        }}
+      >
+        {/* Subtle Purple-Blue Gradient Overlay for readability and mood */}
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-950/80 via-slate-950/40 to-transparent" />
         
-        {/* Futuristic Scrolling Grid Overlay with Blue Tint */}
-        <div className="absolute inset-0 opacity-[0.25] animate-grid-scroll" 
-          style={{ 
-            backgroundImage: `linear-gradient(to right, rgba(0,123,255,0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,123,255,0.2) 1px, transparent 1px)`,
-            backgroundSize: '50px 50px'
-          }} 
-        />
-
-        {/* Atmospheric Blue/Purple Glows */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(0,113,227,0.15)_0%,transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,rgba(0,180,255,0.15)_0%,transparent_50%)]" />
-
         {/* Subtle Grain Texture */}
-        <div className="absolute inset-0 opacity-[0.05] mix-blend-overlay pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+        <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
         
-        {/* Refined Gradient Overlays - Less dark to show more image */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)]" />
-        
-        {/* Intense Glowing Accents */}
-        <div className="absolute top-[-5%] left-[-5%] w-[50%] h-[50%] bg-blue-600/20 blur-[140px] rounded-full animate-pulse" />
-        <div className="absolute bottom-[-5%] right-[-5%] w-[50%] h-[50%] bg-cyan-600/20 blur-[140px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
+        {/* Intense Glowing Accents (Subtle) */}
+        <div className="absolute top-[-5%] left-[-5%] w-[50%] h-[50%] bg-indigo-600/5 blur-[140px] rounded-full" />
+        <div className="absolute bottom-[-5%] right-[-5%] w-[50%] h-[50%] bg-blue-600/5 blur-[140px] rounded-full" />
       </div>
 
       <div className="relative z-10 w-full flex flex-col items-center p-6 md:p-12 min-h-screen">
@@ -524,320 +508,342 @@ export default function App() {
           </p>
         </motion.header>
 
-        <main className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        <main className={`w-full transition-all duration-1000 ease-in-out ${
+          result || loading 
+            ? 'max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-12' 
+            : 'max-w-2xl flex flex-col items-center mx-auto'
+        }`}>
           {/* Left: Input Section */}
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="space-y-6 bg-white/[0.03] backdrop-blur-3xl border border-white/10 p-8 rounded-[2.5rem] h-fit shadow-2xl"
-          >
-            {/* Group A: Core Concept */}
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <div className="flex items-center gap-1.5 ml-1">
-                  <PenTool className="w-3 h-3 text-white" />
-                  <label className="text-[11px] font-sans font-bold uppercase tracking-[0.25em] text-white">
-                    {t.yourIdea}
-                  </label>
-                </div>
+          <div className="w-full space-y-6">
+            <motion.div 
+              layout
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="w-full"
+            >
+              <div className="relative group">
                 <textarea
                   value={idea}
                   onChange={(e) => setIdea(e.target.value)}
                   placeholder={t.placeholder}
-                  className="w-full h-32 p-6 rounded-2xl bg-white/[0.05] border-2 border-white/40 focus:border-white/80 focus:bg-white/[0.08] outline-none transition-all text-base placeholder:text-white/30 resize-none text-white"
+                  className="w-full h-20 p-6 rounded-3xl bg-white/5 backdrop-blur-2xl border border-white/20 focus:border-white/40 focus:bg-white/10 outline-none transition-all text-lg placeholder:text-white/20 resize-none text-white text-center shadow-2xl"
                 />
+                {idea && (
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="absolute -bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-white/10 backdrop-blur-md border border-white/10 rounded-full text-[8px] uppercase tracking-widest text-white/40"
+                  >
+                    {t.yourIdea}
+                  </motion.div>
+                )}
               </div>
-            </div>
+            </motion.div>
 
-            {/* Divider */}
-            <div className="h-px bg-white/10 w-full" />
+            <AnimatePresence>
+              {idea.trim().length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0, y: 20 }}
+                  animate={{ opacity: 1, height: 'auto', y: 0 }}
+                  exit={{ opacity: 0, height: 0, y: 20 }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-6 bg-white/[0.03] backdrop-blur-3xl border border-white/10 p-8 rounded-[2.5rem] shadow-2xl mt-4">
+                    {/* Group B: Visual Layer */}
+                    <div className="space-y-6">
+                      <div className="space-y-6">
+                        {styleCategories.map((category) => {
+                          const CategoryIcon = category.title === 'artStyle' ? Palette : category.title === 'texture' ? Layers : Sun;
+                          return (
+                            <div key={category.title} className="space-y-3">
+                              <div className="flex items-center gap-1.5 ml-1">
+                                <CategoryIcon className="w-3 h-3 text-white" />
+                                <span className="text-[10px] font-sans font-semibold uppercase tracking-[0.2em] text-white">
+                                  {t[category.title as keyof typeof t] as string}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                              {category.options.map((opt) => {
+                                const Icon = opt.icon;
+                                const isSelected = selectedOptions.includes(opt.label);
+                                return (
+                                  <button
+                                    key={opt.label}
+                                    onClick={() => toggleOption(opt.label)}
+                                    className={`flex items-center gap-2.5 px-4 py-3 rounded-xl text-[11px] font-normal transition-all border ${
+                                      isSelected 
+                                        ? 'bg-white border-white text-black shadow-[0_0_20px_rgba(255,255,255,0.3)]' 
+                                        : 'bg-white/5 border-white/5 text-white hover:border-white/20'
+                                    }`}
+                                  >
+                                    <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-black' : 'text-white'}`} />
+                                    {t.styles[opt.label as keyof typeof t.styles] || opt.label}
+                                  </button>
+                                );
+                              })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-            {/* Group B: Visual Layer */}
-            <div className="space-y-6">
-              <div className="space-y-6">
-                {styleCategories.map((category) => {
-                  const CategoryIcon = category.title === 'artStyle' ? Palette : category.title === 'texture' ? Layers : Sun;
-                  return (
-                    <div key={category.title} className="space-y-3">
+                    {/* Divider */}
+                    <div className="h-px bg-white/10 w-full" />
+
+                    {/* Group C: Color Strategy */}
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 gap-6">
+                        {/* Background Color */}
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-1.5 ml-1">
+                            <Droplets className="w-3 h-3 text-white" />
+                            <span className="text-[10px] font-sans font-semibold uppercase tracking-[0.2em] text-white">
+                              {t.bgColor}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap justify-between items-center p-4 rounded-2xl bg-white/5 border border-white/5">
+                            {paletteColors.map((color) => {
+                              const isSelected = selectedBgColors.includes(color.value);
+                              return (
+                                <button
+                                  key={`bg-${color.name}`}
+                                  onClick={() => {
+                                    setSelectedBgColors(prev => 
+                                      prev.includes(color.value) 
+                                        ? prev.filter(c => c !== color.value) 
+                                        : [...prev, color.value]
+                                    );
+                                  }}
+                                  className={`group relative w-8 h-8 rounded-full transition-all duration-300 ${
+                                    isSelected 
+                                      ? 'ring-2 ring-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)]' 
+                                      : 'hover:scale-110'
+                                  }`}
+                                  style={{ backgroundColor: color.value }}
+                                  title={color.name}
+                                >
+                                  {isSelected && (
+                                    <Check className={`absolute inset-0 m-auto w-4 h-4 ${
+                                      ['#FFFFFF', '#FFCC00'].includes(color.value) ? 'text-black' : 'text-white'
+                                    }`} />
+                                  )}
+                                </button>
+                              );
+                            })}
+
+                            {/* Custom BG Color Button */}
+                            <div className="relative" ref={bgButtonRef}>
+                              <button
+                                onClick={() => setActivePickerType(activePickerType === 'bg' ? null : 'bg')}
+                                className={`group relative w-8 h-8 rounded-full transition-all duration-300 flex items-center justify-center border-2 ${
+                                  activePickerType === 'bg' || activeCustomBg
+                                    ? 'border-transparent ring-2 ring-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)]' 
+                                    : 'border-white/20 hover:border-white/40 hover:scale-110'
+                                }`}
+                                style={{ 
+                                  backgroundColor: activeCustomBg || (activePickerType === 'bg' ? customColor : 'rgba(255,255,255,0.1)') 
+                                }}
+                                title="Custom Background Color"
+                              >
+                                {activeCustomBg ? (
+                                  <Check className={`w-4 h-4 ${isLightColor(activeCustomBg) ? 'text-black' : 'text-white'}`} />
+                                ) : (
+                                  <Plus className="w-4 h-4 text-white/40 group-hover:text-white/60" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Object Color */}
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-1.5 ml-1">
+                            <Box className="w-3 h-3 text-white" />
+                            <span className="text-[10px] font-sans font-semibold uppercase tracking-[0.2em] text-white">
+                              {t.objColor}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap justify-between items-center p-4 rounded-2xl bg-white/5 border border-white/5">
+                            {paletteColors.map((color) => {
+                              const isSelected = selectedObjectColors.includes(color.value);
+                              return (
+                                <button
+                                  key={`obj-${color.name}`}
+                                  onClick={() => {
+                                    setSelectedObjectColors(prev => 
+                                      prev.includes(color.value) 
+                                        ? prev.filter(c => c !== color.value) 
+                                        : [...prev, color.value]
+                                    );
+                                  }}
+                                  className={`group relative w-8 h-8 rounded-full transition-all duration-300 ${
+                                    isSelected 
+                                      ? 'ring-2 ring-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)]' 
+                                      : 'hover:scale-110'
+                                  }`}
+                                  style={{ backgroundColor: color.value }}
+                                  title={color.name}
+                                >
+                                  {isSelected && (
+                                    <Check className={`absolute inset-0 m-auto w-4 h-4 ${
+                                      ['#FFFFFF', '#FFCC00'].includes(color.value) ? 'text-black' : 'text-white'
+                                    }`} />
+                                  )}
+                                </button>
+                              );
+                            })}
+
+                            {/* Custom Object Color Button */}
+                            <div className="relative" ref={objectButtonRef}>
+                              <button
+                                onClick={() => setActivePickerType(activePickerType === 'object' ? null : 'object')}
+                                className={`group relative w-8 h-8 rounded-full transition-all duration-300 flex items-center justify-center border-2 ${
+                                  activePickerType === 'object' || activeCustomObj
+                                    ? 'border-transparent ring-2 ring-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)]' 
+                                    : 'border-white/20 hover:border-white/40 hover:scale-110'
+                                }`}
+                                style={{ 
+                                  backgroundColor: activeCustomObj || (activePickerType === 'object' ? customColor : 'rgba(255,255,255,0.1)') 
+                                }}
+                                title="Custom Object Color"
+                              >
+                                {activeCustomObj ? (
+                                  <Check className={`w-4 h-4 ${isLightColor(activeCustomObj) ? 'text-black' : 'text-white'}`} />
+                                ) : (
+                                  <Plus className="w-4 h-4 text-white/40 group-hover:text-white/60" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="h-px bg-white/10 w-full" />
+
+                    {/* Group D: Camera & Ratio */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <CustomDropdown 
+                        label={t.camera} 
+                        value={t.cameraOpts[selectedCamera as keyof typeof t.cameraOpts] || selectedCamera} 
+                        options={cameraOptions} 
+                        displayOptions={cameraOptions.map(opt => t.cameraOpts[opt as keyof typeof t.cameraOpts] || opt)}
+                        onChange={setSelectedCamera} 
+                        icon={Camera}
+                      />
+                      <CustomDropdown 
+                        label={t.ratio} 
+                        value={selectedRatio} 
+                        options={ratioOptions} 
+                        onChange={setSelectedRatio} 
+                        icon={Maximize}
+                      />
+                    </div>
+
+                    {/* Divider */}
+                    <div className="h-px bg-white/10 w-full" />
+
+                    {/* Group E: Reference Image */}
+                    <div className="space-y-2">
                       <div className="flex items-center gap-1.5 ml-1">
-                        <CategoryIcon className="w-3 h-3 text-white" />
-                        <span className="text-[10px] font-sans font-semibold uppercase tracking-[0.2em] text-white">
-                          {t[category.title as keyof typeof t] as string}
-                        </span>
+                        <ImageIcon className="w-3 h-3 text-white" />
+                        <label className="text-[11px] font-sans font-bold uppercase tracking-[0.25em] text-white">
+                          {t.refImage}
+                        </label>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {category.options.map((opt) => {
-                        const Icon = opt.icon;
-                        const isSelected = selectedOptions.includes(opt.label);
-                        return (
-                          <button
-                            key={opt.label}
-                            onClick={() => toggleOption(opt.label)}
-                            className={`flex items-center gap-2.5 px-4 py-3 rounded-xl text-[11px] font-normal transition-all border ${
-                              isSelected 
-                                ? 'bg-white border-white text-black shadow-[0_0_20px_rgba(255,255,255,0.3)]' 
-                                : 'bg-white/5 border-white/5 text-white hover:border-white/20'
-                            }`}
-                          >
-                            <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-black' : 'text-white'}`} />
-                            {t.styles[opt.label as keyof typeof t.styles] || opt.label}
-                          </button>
-                        );
-                      })}
+                      <div 
+                        className={`relative group h-32 rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center gap-2 overflow-hidden ${
+                          referenceImage ? 'border-white/40 bg-white/5' : 'border-white/20 hover:border-white/40 bg-white/[0.02]'
+                        }`}
+                      >
+                        {analyzing && (
+                          <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
+                            <RefreshCw className="w-6 h-6 text-white animate-spin" />
+                            <span className="text-[10px] uppercase tracking-[0.2em] text-white font-bold animate-pulse">
+                              {t.analyzing}
+                            </span>
+                          </div>
+                        )}
+                        {referenceImage ? (
+                          <>
+                            <img src={referenceImage} className="absolute inset-0 w-full h-full object-cover opacity-40" alt="Reference" />
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button 
+                                onClick={handleRemoveImage}
+                                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                              >
+                                <X className="w-5 h-5" />
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <ImageIcon className="w-6 h-6 text-white/20 group-hover:text-white/40 transition-colors" />
+                            <span className="text-[10px] uppercase tracking-widest text-white/30 group-hover:text-white/50 transition-colors px-4 text-center">
+                              {t.uploadDesc}
+                            </span>
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              onChange={handleImageUpload}
+                              className="absolute inset-0 opacity-0 cursor-pointer"
+                            />
+                          </>
+                        )}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
 
-            {/* Divider */}
-            <div className="h-px bg-white/10 w-full" />
-
-            {/* Group C: Color Strategy */}
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 gap-6">
-                {/* Background Color */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-1.5 ml-1">
-                    <Droplets className="w-3 h-3 text-white" />
-                    <span className="text-[10px] font-sans font-semibold uppercase tracking-[0.2em] text-white">
-                      {t.bgColor}
-                    </span>
+                    <button
+                      onClick={handleGenerate}
+                      disabled={loading || !idea.trim()}
+                      className="w-full py-4.5 bg-[#0071e3] text-white rounded-2xl font-bold text-xs uppercase tracking-[0.15em] transition-all hover:bg-[#0077ed] disabled:opacity-20 disabled:cursor-not-allowed shadow-[0_10px_40px_rgba(0,113,227,0.4)] mt-6"
+                    >
+                      {loading ? (
+                        <RefreshCw className="w-4 h-4 animate-spin mx-auto" />
+                      ) : (
+                        <div className="flex items-center justify-center gap-2">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          {t.generate}
+                        </div>
+                      )}
+                    </button>
                   </div>
-                  <div className="flex flex-wrap justify-between items-center p-4 rounded-2xl bg-white/5 border border-white/5">
-                    {paletteColors.map((color) => {
-                      const isSelected = selectedBgColors.includes(color.value);
-                      return (
-                        <button
-                          key={`bg-${color.name}`}
-                          onClick={() => {
-                            setSelectedBgColors(prev => 
-                              prev.includes(color.value) 
-                                ? prev.filter(c => c !== color.value) 
-                                : [...prev, color.value]
-                            );
-                          }}
-                          className={`group relative w-8 h-8 rounded-full transition-all duration-300 ${
-                            isSelected 
-                              ? 'ring-2 ring-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)]' 
-                              : 'hover:scale-110'
-                          }`}
-                          style={{ backgroundColor: color.value }}
-                          title={color.name}
-                        >
-                          {isSelected && (
-                            <Check className={`absolute inset-0 m-auto w-4 h-4 ${
-                              ['#FFFFFF', '#FFCC00'].includes(color.value) ? 'text-black' : 'text-white'
-                            }`} />
-                          )}
-                        </button>
-                      );
-                    })}
-
-                    {/* Custom BG Color Button */}
-                    <div className="relative" ref={bgButtonRef}>
-                      <button
-                        onClick={() => setActivePickerType(activePickerType === 'bg' ? null : 'bg')}
-                        className={`group relative w-8 h-8 rounded-full transition-all duration-300 flex items-center justify-center border-2 ${
-                          activePickerType === 'bg' || activeCustomBg
-                            ? 'border-transparent ring-2 ring-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)]' 
-                            : 'border-white/20 hover:border-white/40 hover:scale-110'
-                        }`}
-                        style={{ 
-                          backgroundColor: activeCustomBg || (activePickerType === 'bg' ? customColor : 'rgba(255,255,255,0.1)') 
-                        }}
-                        title="Custom Background Color"
-                      >
-                        {activeCustomBg ? (
-                          <Check className={`w-4 h-4 ${isLightColor(activeCustomBg) ? 'text-black' : 'text-white'}`} />
-                        ) : (
-                          <Plus className="w-4 h-4 text-white/40 group-hover:text-white/60" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Object Color */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-1.5 ml-1">
-                    <Box className="w-3 h-3 text-white" />
-                    <span className="text-[10px] font-sans font-semibold uppercase tracking-[0.2em] text-white">
-                      {t.objColor}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap justify-between items-center p-4 rounded-2xl bg-white/5 border border-white/5">
-                    {paletteColors.map((color) => {
-                      const isSelected = selectedObjectColors.includes(color.value);
-                      return (
-                        <button
-                          key={`obj-${color.name}`}
-                          onClick={() => {
-                            setSelectedObjectColors(prev => 
-                              prev.includes(color.value) 
-                                ? prev.filter(c => c !== color.value) 
-                                : [...prev, color.value]
-                            );
-                          }}
-                          className={`group relative w-8 h-8 rounded-full transition-all duration-300 ${
-                            isSelected 
-                              ? 'ring-2 ring-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)]' 
-                              : 'hover:scale-110'
-                          }`}
-                          style={{ backgroundColor: color.value }}
-                          title={color.name}
-                        >
-                          {isSelected && (
-                            <Check className={`absolute inset-0 m-auto w-4 h-4 ${
-                              ['#FFFFFF', '#FFCC00'].includes(color.value) ? 'text-black' : 'text-white'
-                            }`} />
-                          )}
-                        </button>
-                      );
-                    })}
-
-                    {/* Custom Object Color Button */}
-                    <div className="relative" ref={objectButtonRef}>
-                      <button
-                        onClick={() => setActivePickerType(activePickerType === 'object' ? null : 'object')}
-                        className={`group relative w-8 h-8 rounded-full transition-all duration-300 flex items-center justify-center border-2 ${
-                          activePickerType === 'object' || activeCustomObj
-                            ? 'border-transparent ring-2 ring-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)]' 
-                            : 'border-white/20 hover:border-white/40 hover:scale-110'
-                        }`}
-                        style={{ 
-                          backgroundColor: activeCustomObj || (activePickerType === 'object' ? customColor : 'rgba(255,255,255,0.1)') 
-                        }}
-                        title="Custom Object Color"
-                      >
-                        {activeCustomObj ? (
-                          <Check className={`w-4 h-4 ${isLightColor(activeCustomObj) ? 'text-black' : 'text-white'}`} />
-                        ) : (
-                          <Plus className="w-4 h-4 text-white/40 group-hover:text-white/60" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div className="h-px bg-white/10 w-full" />
-
-            {/* Group D: Camera & Ratio */}
-            <div className="grid grid-cols-2 gap-4">
-              <CustomDropdown 
-                label={t.camera} 
-                value={t.cameraOpts[selectedCamera as keyof typeof t.cameraOpts] || selectedCamera} 
-                options={cameraOptions} 
-                displayOptions={cameraOptions.map(opt => t.cameraOpts[opt as keyof typeof t.cameraOpts] || opt)}
-                onChange={setSelectedCamera} 
-                icon={Camera}
-              />
-              <CustomDropdown 
-                label={t.ratio} 
-                value={selectedRatio} 
-                options={ratioOptions} 
-                onChange={setSelectedRatio} 
-                icon={Maximize}
-              />
-            </div>
-
-            {/* Divider */}
-            <div className="h-px bg-white/10 w-full" />
-
-            {/* Group E: Reference Image */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5 ml-1">
-                <ImageIcon className="w-3 h-3 text-white" />
-                <label className="text-[11px] font-sans font-bold uppercase tracking-[0.25em] text-white">
-                  {t.refImage}
-                </label>
-              </div>
-              <div 
-                className={`relative group h-32 rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center gap-2 overflow-hidden ${
-                  referenceImage ? 'border-white/40 bg-white/5' : 'border-white/20 hover:border-white/40 bg-white/[0.02]'
-                }`}
-              >
-                {analyzing && (
-                  <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
-                    <RefreshCw className="w-6 h-6 text-white animate-spin" />
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-white font-bold animate-pulse">
-                      {t.analyzing}
-                    </span>
-                  </div>
-                )}
-                {referenceImage ? (
-                  <>
-                    <img src={referenceImage} className="absolute inset-0 w-full h-full object-cover opacity-40" alt="Reference" />
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={handleRemoveImage}
-                        className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <ImageIcon className="w-6 h-6 text-white/20 group-hover:text-white/40 transition-colors" />
-                    <span className="text-[10px] uppercase tracking-widest text-white/30 group-hover:text-white/50 transition-colors px-4 text-center">
-                      {t.uploadDesc}
-                    </span>
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={handleImageUpload}
-                      className="absolute inset-0 opacity-0 cursor-pointer"
-                    />
-                  </>
-                )}
-              </div>
-            </div>
-
-            <button
-              onClick={handleGenerate}
-              disabled={loading || !idea.trim()}
-              className="w-full py-4.5 bg-[#0071e3] text-white rounded-2xl font-bold text-xs uppercase tracking-[0.15em] transition-all hover:bg-[#0077ed] disabled:opacity-20 disabled:cursor-not-allowed shadow-[0_10px_40px_rgba(0,113,227,0.4)]"
-            >
-              {loading ? (
-                <RefreshCw className="w-4 h-4 animate-spin mx-auto" />
-              ) : (
-                <div className="flex items-center justify-center gap-2">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  {t.generate}
-                </div>
+                </motion.div>
               )}
-            </button>
-          </motion.div>
+            </AnimatePresence>
+          </div>
 
           {/* Right: Result Section */}
-          <div className="w-full h-full">
-            <AnimatePresence mode="wait">
-              {loading ? (
-                <motion.div
-                  key="loading"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="h-full min-h-[400px] flex flex-col items-center justify-center text-white/40 border-2 border-dashed border-white/20 rounded-[2.5rem] p-12 text-center backdrop-blur-sm"
-                >
-                  <div className="mb-6">
-                    <RefreshCw className="w-10 h-10 text-white animate-spin" />
-                  </div>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/60">{t.forging}</span>
-                </motion.div>
-              ) : result ? (
-                <motion.div
-                  key="results"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="space-y-4 h-full"
-                >
+          <AnimatePresence mode="wait">
+            {(loading || result) && (
+              <motion.div 
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 40 }}
+                className="w-full h-full"
+              >
+                {loading ? (
+                  <motion.div
+                    key="loading"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="h-full min-h-[500px] flex flex-col items-center justify-center text-white/40 border border-white/10 bg-white/5 rounded-[2.5rem] p-12 text-center backdrop-blur-3xl shadow-2xl"
+                  >
+                    <div className="mb-6">
+                      <RefreshCw className="w-10 h-10 text-white animate-spin" />
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/60">{t.forging}</span>
+                  </motion.div>
+                ) : result && (
+                  <motion.div
+                    key="results"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="space-y-4 h-full"
+                  >
                   {/* Insight Dashboard */}
                   <div className="p-8 rounded-[2.5rem] bg-[#0071e3]/15 border border-[#0071e3]/30 backdrop-blur-3xl shadow-2xl space-y-8">
                     <div className="flex items-center gap-2.5">
@@ -975,26 +981,11 @@ export default function App() {
                       {result.stableDiffusion}
                     </p>
                   </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="placeholder"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="h-full min-h-[400px] flex flex-col items-center justify-center text-white/40 border-2 border-dashed border-white/20 rounded-[2.5rem] p-12 text-center backdrop-blur-sm"
-              >
-                <div className="p-6 rounded-full bg-white/10 mb-6">
-                  <Sparkles className="w-10 h-10 opacity-40" />
-                </div>
-                <h3 className="text-sm font-semibold uppercase tracking-[0.3em] mb-2">{t.readyTitle}</h3>
-                <p className="text-[10px] uppercase tracking-widest opacity-60 leading-relaxed whitespace-pre-line">
-                  {t.readyDesc}
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
         {/* Footer */}
