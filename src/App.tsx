@@ -521,22 +521,15 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               className="w-full"
             >
-              <div className="relative group">
-                <textarea
-                  value={idea}
-                  onChange={(e) => setIdea(e.target.value)}
-                  placeholder={t.placeholder}
-                  className="w-full h-20 p-6 rounded-3xl bg-white/5 backdrop-blur-2xl border border-white/20 focus:border-white/40 focus:bg-white/10 outline-none transition-all text-lg placeholder:text-white/20 resize-none text-white text-center shadow-2xl"
-                />
-                {idea && (
-                  <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="absolute -bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-white/10 backdrop-blur-md border border-white/10 rounded-full text-[8px] uppercase tracking-widest text-white/40"
-                  >
-                    {t.yourIdea}
-                  </motion.div>
-                )}
+              <div className={`transition-all duration-500 ${idea.trim() === '' ? 'neon-flow' : 'bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[2.5rem]'}`}>
+                <div className={idea.trim() === '' ? 'neon-flow-inner' : ''}>
+                  <textarea
+                    value={idea}
+                    onChange={(e) => setIdea(e.target.value)}
+                    placeholder={t.placeholder}
+                    className="w-full h-20 p-6 rounded-[2.5rem] bg-transparent outline-none transition-all text-lg placeholder:text-white/70 placeholder:font-normal resize-none text-white text-center"
+                  />
+                </div>
               </div>
             </motion.div>
 
@@ -548,7 +541,7 @@ export default function App() {
                   exit={{ opacity: 0, height: 0, y: 20 }}
                   className="overflow-hidden"
                 >
-                  <div className="space-y-6 bg-white/[0.03] backdrop-blur-3xl border border-white/10 p-8 rounded-[2.5rem] shadow-2xl mt-4">
+                  <div className="space-y-6 bg-white/[0.03] backdrop-blur-3xl border border-white/10 p-8 rounded-[2.5rem] mt-4">
                     {/* Group B: Visual Layer */}
                     <div className="space-y-6">
                       <div className="space-y-6">
@@ -798,7 +791,7 @@ export default function App() {
                     <button
                       onClick={handleGenerate}
                       disabled={loading || !idea.trim()}
-                      className="w-full py-4.5 bg-[#0071e3] text-white rounded-2xl font-bold text-xs uppercase tracking-[0.15em] transition-all hover:bg-[#0077ed] disabled:opacity-20 disabled:cursor-not-allowed shadow-[0_10px_40px_rgba(0,113,227,0.4)] mt-6"
+                      className="w-full py-4.5 bg-[#0071e3] text-white rounded-2xl font-bold text-xs uppercase tracking-[0.15em] transition-all hover:bg-[#0077ed] disabled:opacity-20 disabled:cursor-not-allowed mt-6"
                     >
                       {loading ? (
                         <RefreshCw className="w-4 h-4 animate-spin mx-auto" />
@@ -830,7 +823,7 @@ export default function App() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="h-full min-h-[500px] flex flex-col items-center justify-center text-white/40 border border-white/10 bg-white/5 rounded-[2.5rem] p-12 text-center backdrop-blur-3xl shadow-2xl"
+                    className="h-full min-h-[500px] flex flex-col items-center justify-center text-white/40 border border-white/10 bg-white/5 rounded-[2.5rem] p-12 text-center backdrop-blur-3xl"
                   >
                     <div className="mb-6">
                       <RefreshCw className="w-10 h-10 text-white animate-spin" />
@@ -845,7 +838,7 @@ export default function App() {
                     className="space-y-4 h-full"
                   >
                   {/* Insight Dashboard */}
-                  <div className="p-8 rounded-[2.5rem] bg-[#0071e3]/15 border border-[#0071e3]/30 backdrop-blur-3xl shadow-2xl space-y-8">
+                  <div className="p-8 rounded-[2.5rem] bg-[#0071e3]/15 border border-[#0071e3]/30 backdrop-blur-3xl space-y-8">
                     <div className="flex items-center gap-2.5">
                       <Activity className="text-white w-4 h-4" />
                       <span className="text-[10px] font-sans font-bold uppercase tracking-[0.2em] text-white">{t.insight}</span>
