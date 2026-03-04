@@ -26,6 +26,11 @@
   100% { background-position: 50px 50px; }
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .animate-pulse-slow {
   animation: pulse-slow 10s ease-in-out infinite;
 }
@@ -36,6 +41,40 @@
 
 .glass-card {
   @apply bg-white/5 backdrop-blur-3xl border border-white/10 shadow-2xl;
+}
+
+.animated-border-container {
+  @apply relative p-[1px] rounded-3xl overflow-hidden bg-white/5 transition-all duration-500;
+}
+
+.animated-border-container:focus-within {
+  @apply bg-white/20 shadow-[0_0_30px_rgba(0,113,227,0.2)];
+}
+
+.animated-border-container::before {
+  content: '';
+  @apply absolute inset-[-150%] bg-[conic-gradient(from_0deg,transparent_0deg,transparent_150deg,rgba(0,113,227,0.5)_170deg,white_180deg,rgba(0,113,227,0.5)_190deg,transparent_210deg,transparent_360deg)] animate-[spin_6s_linear_infinite] opacity-0 transition-opacity duration-500;
+}
+
+.animated-border-container:hover::before,
+.animated-border-container:focus-within::before {
+  @apply opacity-100;
+}
+
+.animated-border-inner {
+  @apply relative rounded-[calc(1.5rem-1px)] bg-[#050505]/90 backdrop-blur-3xl w-full h-full transition-colors duration-500 shadow-[inset_0_0_20px_rgba(0,0,0,0.5)];
+}
+
+.animated-border-container:focus-within .animated-border-inner {
+  @apply bg-[#080808]/95;
+}
+
+.animated-border-container textarea {
+  @apply transition-all duration-500;
+}
+
+.animated-border-container textarea:focus {
+  @apply text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.3)];
 }
 
 .minimal-card {
