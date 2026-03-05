@@ -129,6 +129,7 @@ export default function App() {
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<PromptExpansion | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [lang, setLang] = useState<'en' | 'ko'>('ko');
   const [isEditing, setIsEditing] = useState(false);
@@ -588,34 +589,47 @@ export default function App() {
     setGeneratingImage(true);
     setResult(null);
     setGeneratedImage(null);
+    setImageError(null);
 
     try {
-      // Run both in parallel for better performance
-      const [promptResult, imageUrl] = await Promise.all([
-        expandPrompt(
-          idea, 
-          activeOptions, 
-          formatColors(selectedBgColors), 
-          formatColors(selectedObjectColors), 
-          selectedCamera,
-          selectedRatio as any,
-          lang,
-          referenceImage || undefined
-        ),
-        generateWallpaper(
-          idea, 
-          activeOptions, 
-          formatColors(selectedBgColors), 
-          formatColors(selectedObjectColors), 
-          selectedCamera,
-          selectedRatio as any
-        )
-      ]);
+      // Run both in parallel but handle them separately to allow partial success
+      const promptPromise = expandPrompt(
+        idea, 
+        activeOptions, 
+        formatColors(selectedBgColors), 
+        formatColors(selectedObjectColors), 
+        selectedCamera,
+        selectedRatio as any,
+        lang,
+        referenceImage || undefined
+      ).then(res => {
+        setResult(res);
+        setLoading(false);
+      });
 
-      setResult(promptResult);
-      setGeneratedImage(imageUrl);
+      const imagePromise = generateWallpaper(
+        idea, 
+        activeOptions, 
+        formatColors(selectedBgColors), 
+        formatColors(selectedObjectColors), 
+        selectedCamera,
+        selectedRatio as any
+      ).then(url => {
+        setGeneratedImage(url);
+      })
+      .catch(err => {
+        console.error("Image generation failed:", err);
+        if (err.message?.includes('429') || err.message?.includes('quota')) {
+          setImageError(lang === 'ko' ? '무료 티어 쿼터(일 20회)를 초과했습니다. 내일 다시 시도해주세요.' : 'Free tier quota exceeded. Please try again tomorrow.');
+        } else {
+          setImageError(lang === 'ko' ? '이미지 생성에 실패했습니다.' : 'Image generation failed.');
+        }
+      })
+      .finally(() => setGeneratingImage(false));
+
+      await Promise.all([promptPromise, imagePromise]);
     } catch (error: any) {
-      console.error(error);
+      console.error("Overall generation failed:", error);
       if (error.message?.includes('429') || error.message?.includes('quota')) {
         alert('무료 티어 쿼터(일 20회)를 초과했거나 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.');
       } else {
@@ -1117,14 +1131,14 @@ export default function App() {
 
           {/* Results Section: Horizontal Grid */}
           <AnimatePresence mode="wait">
-            {!isEditing && (loading || generatingImage || result || generatedImage) && (
+            {!isEditing && (loading || generatingImage || result || generatedImage || imageError) && (
               <motion.div 
                 initial={{ opacity: 0, y: 40 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 40 }}
                 className="w-full"
               >
-                {(loading || generatingImage) ? (
+                {loading ? (
                   <div className="flex flex-col items-center justify-center py-20 text-center">
                     <div className="mb-6">
                       <RefreshCw className="w-10 h-10 text-white animate-spin" />
@@ -1224,40 +1238,61 @@ export default function App() {
 
                     {/* Right Column: Image + Prompts */}
                     <div className="space-y-8">
-                      {/* 2. Generated Image */}
-                      {generatedImage && (
+                      {/* 2. Generated Image or Error/Loading */}
+                      {(generatingImage || generatedImage || imageError) && (
                         <motion.div
                           initial={{ opacity: 0, scale: 0.95 }}
                           animate={{ opacity: 1, scale: 1 }}
                           className="flex flex-col gap-4"
                         >
-                          <div className="relative group rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl bg-white/5 backdrop-blur-3xl p-4">
-                            <img 
-                              src={generatedImage} 
-                              alt="Generated" 
-                              className="w-full h-auto rounded-2xl shadow-2xl"
-                              referrerPolicy="no-referrer"
-                            />
-                            
-                            {/* Save Button Overlay */}
-                            <div className="absolute top-8 right-8 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button
-                                onClick={() => {
-                                  const link = document.createElement('a');
-                                  link.href = generatedImage;
-                                  link.download = `generated-image-${Date.now()}.png`;
-                                  link.click();
-                                }}
-                                className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 rounded-2xl text-white transition-all hover:scale-110"
-                                title={lang === 'ko' ? '이미지 저장' : 'Save Image'}
-                              >
-                                <Download className="w-5 h-5" />
-                              </button>
-                            </div>
+                          <div className="relative group rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl bg-white/5 backdrop-blur-3xl p-4 min-h-[300px] flex items-center justify-center">
+                            {generatingImage ? (
+                              <div className="flex flex-col items-center gap-4 text-center">
+                                <RefreshCw className="w-8 h-8 text-white animate-spin" />
+                                <span className="text-[10px] uppercase tracking-[0.3em] text-white/40 font-bold">
+                                  {t.forging}
+                                </span>
+                              </div>
+                            ) : generatedImage ? (
+                              <>
+                                <img 
+                                  src={generatedImage} 
+                                  alt="Generated" 
+                                  className="w-full h-auto rounded-2xl shadow-2xl"
+                                  referrerPolicy="no-referrer"
+                                />
+                                
+                                {/* Save Button Overlay */}
+                                <div className="absolute top-8 right-8 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button
+                                    onClick={() => {
+                                      const link = document.createElement('a');
+                                      link.href = generatedImage;
+                                      link.download = `generated-image-${Date.now()}.png`;
+                                      link.click();
+                                    }}
+                                    className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 rounded-2xl text-white transition-all hover:scale-110"
+                                    title={lang === 'ko' ? '이미지 저장' : 'Save Image'}
+                                  >
+                                    <Download className="w-5 h-5" />
+                                  </button>
+                                </div>
 
-                            <div className="absolute inset-x-0 bottom-0 p-8 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                              <p className="text-white text-[10px] font-medium italic">"{idea}"</p>
-                            </div>
+                                <div className="absolute inset-x-0 bottom-0 p-8 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <p className="text-white text-[10px] font-medium italic">"{idea}"</p>
+                                </div>
+                              </>
+                            ) : imageError ? (
+                              <div className="flex flex-col items-center gap-4 text-center p-10">
+                                <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+                                  <ImageIcon className="w-6 h-6 text-white/20" />
+                                </div>
+                                <div className="space-y-1">
+                                  <p className="text-[11px] font-bold text-white/60 uppercase tracking-widest">{lang === 'ko' ? '이미지 생성 불가' : 'Image Generation Unavailable'}</p>
+                                  <p className="text-[10px] text-white/40 leading-relaxed max-w-[240px]">{imageError}</p>
+                                </div>
+                              </div>
+                            ) : null}
                           </div>
                         </motion.div>
                       )}
