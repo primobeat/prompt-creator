@@ -39,10 +39,11 @@ export type StyleOption =
   | 'Minimalist'
   | 'Geometric'
   | 'Detailism'
-  // Step 2: Dimension
+  // Step 2: Visual Style
   | '2D Artwork'
   | '3D Rendering'
   | 'Real Photo'
+  | 'Icon'
   // Step 3 & 4 (2D)
   | 'Vector'
   | 'Line Art'
@@ -54,11 +55,15 @@ export type StyleOption =
   | 'Flat Color'
   // Step 3 & 4 (3D)
   | 'Isometric'
-  | 'Volume'
+  | 'Soft Volume'
+  | 'Inflatable'
+  | 'Geometric Abstract'
   | 'Wireframe'
-  | 'Glass'
-  | 'Metal'
-  | 'Clay'
+  | 'Transparent Glass'
+  | 'Reflective Metal'
+  | 'Matte Clay'
+  | 'Paper'
+  | 'Emissive'
   // Step 3 & 4 (Photo)
   | 'Person'
   | 'Landscape'
@@ -67,6 +72,28 @@ export type StyleOption =
   | 'Close-up'
   | 'Medium Shot'
   | 'Full Shot'
+  | 'Panorama'
+  | 'Long Exposure'
+  | 'Out of Focus (f/1.8)'
+  | 'Pan Focus (f/11)'
+  | 'Fisheye Lens'
+  | 'Macro'
+  | 'Film Grain'
+  // Step 3, 4 & 5 (Icon)
+  | 'Line'
+  | 'Fill'
+  | 'Duotone'
+  | '3D Clay'
+  | 'Glassmorphism'
+  | 'Solid'
+  | 'Realism'
+  | 'Glass'
+  | 'Hand-drawn'
+  | 'Soft Shadow'
+  | 'None'
+  | 'Circle'
+  | 'Square'
+  | 'Organic Curve'
   // Step 5: Background (2D)
   | 'Solid'
   | 'Gradient'
@@ -75,9 +102,16 @@ export type StyleOption =
   | 'Transparent Background'
   // Step 5: Environment (3D & Real)
   | 'Natural Light'
+  | 'Golden Hour'
+  | 'Blue Hour'
   | 'Studio'
   | 'Cinematic Neon'
-  | 'Mist';
+  | 'Mist'
+  | 'Infinity Wall'
+  | 'Levitation'
+  | 'Minimal Room'
+  | 'Soft White'
+  | 'Dark Mood';
 
 export interface ImageAnalysis {
   camera: string;
@@ -108,10 +142,10 @@ export async function generateWallpaper(
 
 [5단계 시스템 구성]
 1. CONCEPT: Minimalist, Geometric, Detailism
-2. DIMENSION: 2D Artwork, 3D Rendering, Real Photo
-3. STYLE/SUBJECT: (Dimension에 따라 다름)
-4. FINISH/SHOT TYPE: (Dimension에 따라 다름)
-5. BACKGROUND/ENVIRONMENT: (Dimension에 따라 다름)
+2. VISUAL STYLE: 2D Artwork, 3D Rendering, Real Photo, Icon
+3. STYLE/SUBJECT/STRUCTURE/ICON STYLE: Vector, Line Art, Gouache, Pixel Art, Isometric, Soft Volume, Inflatable, Geometric Abstract, Wireframe, Person, Landscape, Product, Architecture, Out of Focus (f/1.8), Pan Focus (f/11), Fisheye Lens, Macro, Film Grain, Line, Solid, Realism, 3D Clay, Glass, Isometric, Hand-drawn
+4. FINISH/SHOT TYPE/MATERIAL/ICON FINISH: Halftone, Noise, Paper Texture, Flat Color, Matte Clay, Transparent Glass, Reflective Metal, Paper, Emissive, Close-up, Medium Shot, Full Shot, Panorama, Long Exposure, Gradient, Soft Shadow
+5. BACKGROUND/ENVIRONMENT/SCENE/LIGHTING/CONTAINER: Natural Light, Studio, Cinematic Neon, Mist, Solid, Gradient, Textured Paper, Abstract Shapes, Transparent Background, Infinity Wall, Levitation, Minimal Room, Soft White, Dark Mood, Golden Hour, Blue Hour, None, Circle, Square, Organic Curve
 
 [프롬프트 생성 원칙]
 1. 사용자의 선택에 100% 의존: 사용자가 선택한 키워드들만 사용하여 정교한 영문 프롬프트를 구성해.
@@ -193,9 +227,9 @@ export async function analyzeImage(image: string): Promise<ImageAnalysis> {
 [Categories & Allowed Values]
 1. camera: High Angle, Eye Level, Low Angle, Top View
 2. ratio: 1:1, 4:5, 16:9, 9:16, 3:2, 2:3
-3. artStyle: 2D Artwork, 3D Rendering, Real Photo
-4. texture: Matte, Glass, Metal, Clay, Halftone, Noise, Paper Texture, Flat Color
-5. lighting: Natural Light, Studio, Cinematic Neon, Mist, Solid, Gradient, Textured Paper, Abstract Shapes, Transparent Background
+3. artStyle: 2D Artwork, 3D Rendering, Real Photo, Icon
+4. texture: Matte, Glass, Metal, Clay, Halftone, Noise, Paper Texture, Flat Color, Soft Volume, Inflatable, Geometric Abstract, Transparent Glass, Reflective Metal, Matte Clay, Paper, Emissive, Out of Focus (f/1.8), Pan Focus (f/11), Fisheye Lens, Macro, Film Grain, Line, Solid, Realism, 3D Clay, Glass, Isometric, Hand-drawn
+5. lighting: Natural Light, Studio, Cinematic Neon, Mist, Solid, Gradient, Textured Paper, Abstract Shapes, Transparent Background, Infinity Wall, Levitation, Minimal Room, Soft White, Dark Mood, Golden Hour, Blue Hour, Panorama, Long Exposure, Soft Shadow, None, Circle, Square, Organic Curve
 6. bgColors: Array of Hex color codes (e.g., ["#FFFFFF", "#000000"])
 7. objColors: Array of Hex color codes (e.g., ["#FF0000", "#00FF00"])
 
@@ -263,10 +297,10 @@ export async function expandPrompt(
 
 [5단계 스타일 시스템]
 1. CONCEPT: Minimalist, Geometric, Detailism
-2. DIMENSION: 2D Artwork, 3D Rendering, Real Photo
-3. STYLE/SUBJECT: Vector, Line Art, Gouache, Pixel Art, Isometric, Volume, Wireframe, Person, Landscape, Product, Architecture
-4. FINISH/SHOT TYPE: Halftone, Noise, Paper Texture, Flat Color, Clay, Glass, Metal, Close-up, Medium Shot, Full Shot
-5. BACKGROUND/ENVIRONMENT: Natural Light, Studio, Cinematic Neon, Mist, Solid, Gradient, Textured Paper, Abstract Shapes, Transparent Background
+2. VISUAL STYLE: 2D Artwork, 3D Rendering, Real Photo, Icon
+3. STYLE/SUBJECT/STRUCTURE/ICON STYLE: Vector, Line Art, Gouache, Pixel Art, Isometric, Soft Volume, Inflatable, Geometric Abstract, Wireframe, Person, Landscape, Product, Architecture, Out of Focus (f/1.8), Pan Focus (f/11), Fisheye Lens, Macro, Film Grain, Line, Solid, Realism, 3D Clay, Glass, Isometric, Hand-drawn
+4. FINISH/SHOT TYPE/MATERIAL/ICON FINISH: Halftone, Noise, Paper Texture, Flat Color, Matte Clay, Transparent Glass, Reflective Metal, Paper, Emissive, Close-up, Medium Shot, Full Shot, Panorama, Long Exposure, Gradient, Soft Shadow
+5. BACKGROUND/ENVIRONMENT/SCENE/LIGHTING/CONTAINER: Natural Light, Studio, Cinematic Neon, Mist, Solid, Gradient, Textured Paper, Abstract Shapes, Transparent Background, Infinity Wall, Levitation, Minimal Room, Soft White, Dark Mood, Golden Hour, Blue Hour, None, Circle, Square, Organic Curve
 
 [Tasks]
 1. Generate Prompts: Midjourney (v6.0), DALL-E 3, Stable Diffusion. (항상 영문으로 생성)

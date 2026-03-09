@@ -10,7 +10,7 @@ import {
   Zap, Box, Droplets, Gem, Candy, Wind, Gamepad2, Layers, Plus, X, 
   Camera, Maximize, Image as ImageIcon, BarChart3, Activity, Thermometer, 
   Layers as LayersIcon, Info, ChevronDown, PenTool, Sun, Moon, Scissors, Square,
-  Download, Pencil, StickyNote, Grid
+  Download, Pencil, StickyNote, Grid, Focus, Aperture, Film, Clock, Eye, Move, Circle, Users
 } from 'lucide-react';
 import { HexColorPicker } from 'react-colorful';
 import { 
@@ -21,6 +21,21 @@ import {
   expandPrompt, analyzeImage, generateWallpaper, PromptExpansion, StyleOption, 
   InsightDashboard as InsightType 
 } from './services/geminiService';
+
+interface HistoryLog {
+  id: string;
+  date: string;
+  visualStyle: string;
+  subject: string;
+  options: StyleOption[];
+  prompt: string;
+  insights: InsightType;
+  camera: string;
+  ratio: string;
+  bgColors: string[];
+  objColors: string[];
+  referenceImage: string | null;
+}
 
 const CustomDropdown = ({ 
   label, 
@@ -134,6 +149,32 @@ export default function App() {
   const [lang, setLang] = useState<'en' | 'ko'>('ko');
   const [isEditing, setIsEditing] = useState(false);
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'CREATE' | 'HISTORY' | 'UPGRADE'>('CREATE');
+  const [history, setHistory] = useState<HistoryLog[]>([]);
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
+  const [restoreMessage, setRestoreMessage] = useState<string | null>(null);
+
+  const [userTier, setUserTier] = useState<'FREE' | 'PRO' | 'TEAM'>('FREE');
+  const [generationCount, setGenerationCount] = useState(0);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeReason, setUpgradeReason] = useState('');
+
+  const resetApp = () => {
+    setIdea('');
+    setReferenceImage(null);
+    setSelectedOptions([]);
+    setSelectedBgColors([]);
+    setSelectedObjectColors([]);
+    setSelectedCamera('Eye Level');
+    setSelectedRatio('1:1');
+    setResult(null);
+    setGeneratedImage(null);
+    setImageError(null);
+    setIsEditing(false);
+    setActiveTab('CREATE');
+    setSelectedHistoryId(null);
+    setRestoreMessage(null);
+  };
 
   const t = {
     en: {
@@ -159,12 +200,23 @@ export default function App() {
       dyn: "Dynamism",
       designIntent: "Design Intent",
       concept: "Concept",
-      dimension: "Dimension",
+      dimension: "Visual Style",
+      structure: "Shape",
+      material: "Material",
+      scene: "Scene",
+      lighting_3d: "Lighting",
+      lighting_photo: "Lighting",
+      icon_style: "Style",
+      icon_finish: "Finish Effect",
+      icon_container: "Container",
       form: "Form",
+      technique: "Technique",
       subject: "Subject",
       finish: "Finish",
+      texture_effect: "Texture",
       shotType: "Shot Type",
       environment: "Environment",
+      bg_composition: "Background",
       designing: "Designing...",
       readyTitle: "Ready?",
       readyDesc: "Select styles, add ideas, and get your prompt.",
@@ -175,10 +227,24 @@ export default function App() {
         '2D Artwork': '2D Artwork',
         '3D Rendering': '3D Rendering',
         'Real Photo': 'Real Photo',
+        'Icon': 'Icon',
         'Vector': 'Vector',
         'Line Art': 'Line Art',
         'Gouache': 'Gouache',
         'Pixel Art': 'Pixel Art',
+        'Soft Volume': 'Soft Volume',
+        'Inflatable': 'Inflatable',
+        'Geometric Abstract': 'Geometric Abstract',
+        'Transparent Glass': 'Transparent Glass',
+        'Reflective Metal': 'Reflective Metal',
+        'Matte Clay': 'Matte Clay',
+        'Paper': 'Paper',
+        'Emissive': 'Emissive',
+        'Infinity Wall': 'Infinity Wall',
+        'Levitation': 'Levitation',
+        'Minimal Room': 'Minimal Room',
+        'Soft White': 'Soft White',
+        'Dark Mood': 'Dark Mood',
         'Halftone': 'Halftone',
         'Noise': 'Noise',
         'Paper Texture': 'Paper Texture',
@@ -201,10 +267,31 @@ export default function App() {
         'Close-up': 'Close-up',
         'Medium Shot': 'Medium Shot',
         'Full Shot': 'Full Shot',
+        'Panorama': 'Panorama',
+        'Long Exposure': 'Long Exposure',
         'Natural Light': 'Natural Light',
+        'Golden Hour': 'Golden Hour',
+        'Blue Hour': 'Blue Hour',
         'Studio': 'Studio',
         'Cinematic Neon': 'Cinematic Neon',
-        'Mist': 'Mist'
+        'Mist': 'Mist',
+        'Out of Focus (f/1.8)': 'Out of Focus (f/1.8)',
+        'Pan Focus (f/11)': 'Pan Focus (f/11)',
+        'Fisheye Lens': 'Fisheye Lens',
+        'Macro': 'Macro',
+        'Film Grain': 'Film Grain',
+        'Line': 'Line',
+        'Realism': 'Realism',
+        '3D Clay': '3D Clay',
+        'Hand-drawn': 'Hand-drawn',
+        'Fill': 'Fill',
+        'Duotone': 'Duotone',
+        'Glassmorphism': 'Glassmorphism',
+        'Soft Shadow': 'Soft Shadow',
+        'None': 'None',
+        'Circle': 'Circle',
+        'Square': 'Square',
+        'Organic Curve': 'Organic Curve'
       },
       moods: {
         Vibrant: 'Vibrant',
@@ -218,9 +305,36 @@ export default function App() {
         'High Angle': 'High Angle',
         'Eye Level': 'Eye Level',
         'Low Angle': 'Low Angle',
-        'Top View': 'Top View'
+        'Top View': 'Top View',
+        'Isometric': 'Isometric'
       },
-      forging: "Generating imaginary images and prompts..."
+      forging: "Generating image...",
+      upgrade: "Upgrade",
+      proOnly: "PRO Exclusive",
+      proOnlyDesc: "This feature is only available for PRO users.",
+      limitReached: "Daily Limit Reached",
+      limitReachedDesc: "You have reached your daily limit of 3 generations.",
+      upgradeBtn: "Upgrade to PRO",
+      pricing: {
+        free: {
+          name: "FREE",
+          price: "$0",
+          period: "Forever",
+          features: ["3 generations / day", "Standard quality", "Ad-supported prompts"]
+        },
+        pro: {
+          name: "PRO",
+          price: "$29",
+          period: "per month",
+          features: ["Unlimited generations", "High resolution (4K)", "All icon styles unlocked", "No ads"]
+        },
+        team: {
+          name: "TEAM",
+          price: "$99",
+          period: "per month",
+          features: ["Shared history workspace", "Commercial license", "Priority generation", "Admin dashboard"]
+        }
+      }
     },
     ko: {
       subtitle: "클릭 만으로 완성하는 상상 속 이미지와 프롬프트",
@@ -245,12 +359,23 @@ export default function App() {
       dyn: "역동성",
       designIntent: "디자인 의도",
       concept: "컨셉 (Concept)",
-      dimension: "차원 (Dimension)",
+      dimension: "비주얼 스타일 (Visual Style)",
+      structure: "형태 (Shape)",
+      material: "구도/거리 (Material)",
+      scene: "무대 설정 (Scene)",
+      lighting_3d: "조명 분위기 (Lighting)",
+      lighting_photo: "조명 분위기 (Lighting)",
+      icon_style: "스타일 (Style)",
+      icon_finish: "마감 효과 (Finish Effect)",
+      icon_container: "컨테이너 (Container)",
       form: "형태 (Form)",
+      technique: "표현 기법 (Technique)",
       subject: "주제 (Subject)",
       finish: "마감 (Finish)",
+      texture_effect: "질감/효과 (Texture)",
       shotType: "샷 타입 (Shot Type)",
       environment: "환경 (Environment)",
+      bg_composition: "배경 구성 (Background)",
       designing: "설계 중...",
       readyTitle: "준비 완료!",
       readyDesc: "스타일과 아이디어를 조합해 프롬프트를 생성해 보세요.",
@@ -261,10 +386,24 @@ export default function App() {
         '2D Artwork': '2D 아트워크',
         '3D Rendering': '3D 렌더링',
         'Real Photo': '실사 사진',
+        'Icon': '아이콘',
         'Vector': '벡터',
         'Line Art': '라인아트',
         'Gouache': '과슈',
         'Pixel Art': '픽셀아트',
+        'Soft Volume': '소프트 볼륨',
+        'Inflatable': '인플래터블(풍선)',
+        'Geometric Abstract': '기하학적 추상',
+        'Transparent Glass': '투명 유리',
+        'Reflective Metal': '반사 메탈',
+        'Matte Clay': '매트 클레이',
+        'Paper': '페이퍼',
+        'Emissive': '발광체(Emissive)',
+        'Infinity Wall': '인피니티 월',
+        'Levitation': '공중 부양',
+        'Minimal Room': '미니멀 룸',
+        'Soft White': '소프트 화이트',
+        'Dark Mood': '다크 무드(안개)',
         'Halftone': '하프톤',
         'Noise': '노이즈',
         'Paper Texture': '페이퍼 질감',
@@ -287,10 +426,31 @@ export default function App() {
         'Close-up': '클로즈업',
         'Medium Shot': '미디엄 샷',
         'Full Shot': '풀샷',
+        'Panorama': '파노라마',
+        'Long Exposure': '장노출',
         'Natural Light': '자연광',
+        'Golden Hour': '골든 아워',
+        'Blue Hour': '블루 아워',
         'Studio': '스튜디오',
         'Cinematic Neon': '시네마틱 네온',
-        'Mist': '안개'
+        'Mist': '안개',
+        'Out of Focus (f/1.8)': '아웃포커싱(f/1.8)',
+        'Pan Focus (f/11)': '팬포커스(f/11)',
+        'Fisheye Lens': '어안 렌즈',
+        'Macro': '매크로(접사)',
+        'Film Grain': '필름 그레인',
+        'Line': '라인(Line)',
+        'Realism': '리얼리즘',
+        '3D Clay': '3D 클레이',
+        'Hand-drawn': '핸드드로잉',
+        'Fill': '채우기',
+        'Duotone': '듀오톤',
+        'Glassmorphism': '유리(Glassmorphism)',
+        'Soft Shadow': '부드러운 그림자',
+        'None': '없음',
+        'Circle': '서클',
+        'Square': '스퀘어',
+        'Organic Curve': '유기적 곡선'
       },
       moods: {
         Vibrant: '비비드',
@@ -304,9 +464,36 @@ export default function App() {
         'High Angle': '하이 앵글',
         'Eye Level': '아이 레벨',
         'Low Angle': '로우 앵글',
-        'Top View': '톱 뷰'
+        'Top View': '톱 뷰',
+        'Isometric': '아이소메트릭'
       },
-      forging: "상상 속 이미지와 프롬프트를 생성하는 중..."
+      forging: "이미지 생성 중...",
+      upgrade: "업그레이드",
+      proOnly: "PRO 전용 기능",
+      proOnlyDesc: "이 기능은 PRO 요금제에서만 사용 가능합니다.",
+      limitReached: "일일 생성 한도 초과",
+      limitReachedDesc: "무료 요금제의 일일 한도(3회)를 모두 사용하셨습니다.",
+      upgradeBtn: "PRO로 업그레이드",
+      pricing: {
+        free: {
+          name: "FREE",
+          price: "무료",
+          period: "평생",
+          features: ["하루 3회 생성 가능", "기본 화질", "광고 포함 프롬프트"]
+        },
+        pro: {
+          name: "PRO",
+          price: "$29",
+          period: "월",
+          features: ["무제한 생성", "고해상도(4K)", "모든 아이콘 스타일 개방", "광고 제거"]
+        },
+        team: {
+          name: "TEAM",
+          price: "$99",
+          period: "월",
+          features: ["공동 HISTORY 작업실", "기업용 상업 라이선스", "우선 생성권", "관리자 대시보드"]
+        }
+      }
     }
   }[lang];
 
@@ -317,7 +504,7 @@ export default function App() {
     prevSelectedOptionsRef.current = selectedOptions;
   }, [selectedOptions]);
 
-  const selectedDimension = selectedOptions.find(opt => ['2D Artwork', '3D Rendering', 'Real Photo'].includes(opt));
+  const selectedDimension = selectedOptions.find(opt => ['2D Artwork', '3D Rendering', 'Real Photo', 'Icon'].includes(opt));
 
   const masterCategories = [
     {
@@ -330,12 +517,13 @@ export default function App() {
       ]
     },
     {
-      title: 'DIMENSION',
+      title: 'VISUAL STYLE',
       key: 'dimension',
       options: [
         { label: '2D Artwork' as StyleOption, icon: Square, desc: lang === 'ko' ? '평면적인 예술적 표현' : 'Flat artistic expression' },
         { label: '3D Rendering' as StyleOption, icon: Box, desc: lang === 'ko' ? '입체적인 디지털 렌더링' : 'Three-dimensional digital rendering' },
         { label: 'Real Photo' as StyleOption, icon: Camera, desc: lang === 'ko' ? '사실적인 사진 촬영 기법' : 'Realistic photography techniques' },
+        { label: 'Icon' as StyleOption, icon: ImageIcon, desc: lang === 'ko' ? '심플하고 명확한 상징 체계' : 'Simple and clear symbolic system' },
       ]
     }
   ];
@@ -343,8 +531,8 @@ export default function App() {
   const subCategories: { title: string; key: string; options: { label: StyleOption; icon: any; desc: string }[] }[] = [
     // Step 3: Dynamic STYLE/SUBJECT
     ...(selectedDimension === '2D Artwork' ? [{
-      title: 'STYLE',
-      key: 'form',
+      title: 'TECHNIQUE',
+      key: 'technique',
       options: [
         { label: 'Vector' as StyleOption, icon: PenTool, desc: lang === 'ko' ? '깔끔한 벡터 그래픽' : 'Clean vector graphics' },
         { label: 'Line Art' as StyleOption, icon: Pencil, desc: lang === 'ko' ? '섬세한 선 중심의 아트' : 'Intricate line-focused art' },
@@ -353,28 +541,42 @@ export default function App() {
       ]
     }] : []),
     ...(selectedDimension === '3D Rendering' ? [{
-      title: 'STYLE',
-      key: 'form',
+      title: 'SHAPE',
+      key: 'structure',
       options: [
-        { label: 'Isometric' as StyleOption, icon: Layout, desc: lang === 'ko' ? '일정한 각도의 입체 뷰' : 'Fixed-angle 3D view' },
-        { label: 'Volume' as StyleOption, icon: Box, desc: lang === 'ko' ? '덩어리감이 강조된 입체' : 'Emphasis on mass and volume' },
+        { label: 'Soft Volume' as StyleOption, icon: Box, desc: lang === 'ko' ? '부드러운 볼륨감의 입체' : 'Soft volume 3D' },
+        { label: 'Inflatable' as StyleOption, icon: Cloud, desc: lang === 'ko' ? '풍선처럼 부푼 형태' : 'Inflatable balloon-like form' },
+        { label: 'Geometric Abstract' as StyleOption, icon: Zap, desc: lang === 'ko' ? '기하학적 추상 형태' : 'Geometric abstract form' },
         { label: 'Wireframe' as StyleOption, icon: Square, desc: lang === 'ko' ? '구조가 보이는 선형 입체' : 'Structural linear 3D' },
       ]
     }] : []),
     ...(selectedDimension === 'Real Photo' ? [{
-      title: 'SUBJECT',
-      key: 'subject',
+      title: 'LENS/OPTICS',
+      key: 'structure',
       options: [
-        { label: 'Person' as StyleOption, icon: Sparkles, desc: lang === 'ko' ? '인물 중심의 촬영' : 'Portrait-focused photography' },
-        { label: 'Landscape' as StyleOption, icon: Wind, desc: lang === 'ko' ? '광활한 자연과 풍경' : 'Vast nature and landscapes' },
-        { label: 'Product' as StyleOption, icon: Box, desc: lang === 'ko' ? '제품의 질감과 디테일' : 'Product texture and details' },
-        { label: 'Architecture' as StyleOption, icon: Layout, desc: lang === 'ko' ? '건축물의 조형미' : 'Architectural aesthetics' },
+        { label: 'Out of Focus (f/1.8)' as StyleOption, icon: Focus, desc: lang === 'ko' ? '아웃포커싱(f/1.8)' : 'Out of focus bokeh' },
+        { label: 'Pan Focus (f/11)' as StyleOption, icon: Aperture, desc: lang === 'ko' ? '팬포커스(f/11)' : 'Deep depth of field' },
+        { label: 'Fisheye Lens' as StyleOption, icon: Eye, desc: lang === 'ko' ? '어안 렌즈' : 'Ultra wide angle' },
+        { label: 'Macro' as StyleOption, icon: Maximize, desc: lang === 'ko' ? '매크로(접사)' : 'Extreme close-up' },
+        { label: 'Film Grain' as StyleOption, icon: Film, desc: lang === 'ko' ? '필름 그레인' : 'Analog film texture' },
+      ]
+    }] : []),
+    ...(selectedDimension === 'Icon' ? [{
+      title: 'ICON STYLE',
+      key: 'icon_style',
+      options: [
+        { label: 'Line' as StyleOption, icon: Pencil, desc: lang === 'ko' ? '세련된 선 중심 스타일' : 'Sophisticated line-focused style' },
+        { label: 'Solid' as StyleOption, icon: Square, desc: lang === 'ko' ? '면 중심의 솔리드 스타일' : 'Surface-focused solid style' },
+        { label: 'Realism' as StyleOption, icon: Camera, desc: lang === 'ko' ? '사실적인 묘사의 스타일' : 'Realistic depiction style' },
+        { label: '3D Clay' as StyleOption, icon: Cloud, desc: lang === 'ko' ? '부드러운 점토 느낌의 입체' : 'Soft clay-like 3D' },
+        { label: 'Glass' as StyleOption, icon: Gem, desc: lang === 'ko' ? '투명한 유리 질감' : 'Transparent glass texture' },
+        { label: 'Hand-drawn' as StyleOption, icon: PenTool, desc: lang === 'ko' ? '손으로 그린 듯한 감성' : 'Hand-drawn emotional style' },
       ]
     }] : []),
     // Step 4: Dynamic FINISH/SHOT TYPE
     ...(selectedDimension === '2D Artwork' ? [{
-      title: 'FINISH',
-      key: 'finish',
+      title: 'TEXTURE',
+      key: 'texture_effect',
       options: [
         { label: 'Halftone' as StyleOption, icon: Grid, desc: lang === 'ko' ? '망점 패턴의 인쇄 질감' : 'Dot pattern print texture' },
         { label: 'Noise' as StyleOption, icon: Wind, desc: lang === 'ko' ? '거친 입자감의 노이즈' : 'Gritty grain noise' },
@@ -383,27 +585,41 @@ export default function App() {
       ]
     }] : []),
     ...(selectedDimension === '3D Rendering' ? [{
-      title: 'FINISH',
-      key: 'finish',
+      title: 'MATERIAL',
+      key: 'material',
       options: [
-        { label: 'Glass' as StyleOption, icon: Gem, desc: lang === 'ko' ? '투명하고 맑은 유리' : 'Clear and transparent glass' },
-        { label: 'Metal' as StyleOption, icon: Zap, desc: lang === 'ko' ? '차갑고 단단한 금속' : 'Cold and hard metal' },
-        { label: 'Clay' as StyleOption, icon: Cloud, desc: lang === 'ko' ? '부드러운 점토 질감' : 'Soft clay texture' },
+        { label: 'Matte Clay' as StyleOption, icon: Cloud, desc: lang === 'ko' ? '부드러운 점토 질감' : 'Soft matte clay texture' },
+        { label: 'Transparent Glass' as StyleOption, icon: Gem, desc: lang === 'ko' ? '투명하고 맑은 유리' : 'Clear transparent glass' },
+        { label: 'Reflective Metal' as StyleOption, icon: Zap, desc: lang === 'ko' ? '반사되는 단단한 금속' : 'Reflective hard metal' },
+        { label: 'Paper' as StyleOption, icon: StickyNote, desc: lang === 'ko' ? '종이 질감' : 'Paper texture' },
+        { label: 'Emissive' as StyleOption, icon: Sun, desc: lang === 'ko' ? '빛을 내는 발광체' : 'Light-emitting material' },
       ]
     }] : []),
     ...(selectedDimension === 'Real Photo' ? [{
-      title: 'SHOT TYPE',
-      key: 'shotType',
+      title: 'COMPOSITION/DISTANCE',
+      key: 'material',
       options: [
         { label: 'Close-up' as StyleOption, icon: Maximize, desc: lang === 'ko' ? '피사체에 밀착한 구도' : 'Close-up composition' },
-        { label: 'Medium Shot' as StyleOption, icon: Wind, desc: lang === 'ko' ? '피사체의 상반신 중심 구도' : 'Medium shot composition' },
+        { label: 'Medium Shot' as StyleOption, icon: Move, desc: lang === 'ko' ? '피사체의 상반신 중심 구도' : 'Medium shot composition' },
         { label: 'Full Shot' as StyleOption, icon: Cloud, desc: lang === 'ko' ? '피사체 전체가 보이는 구도' : 'Full shot composition' },
+        { label: 'Panorama' as StyleOption, icon: Layout, desc: lang === 'ko' ? '넓은 파노라마 뷰' : 'Wide panorama view' },
+        { label: 'Long Exposure' as StyleOption, icon: Clock, desc: lang === 'ko' ? '장노출 효과' : 'Long exposure effect' },
+      ]
+    }] : []),
+    ...(selectedDimension === 'Icon' ? [{
+      title: 'FINISH EFFECT',
+      key: 'icon_finish',
+      options: [
+        { label: 'Gradient' as StyleOption, icon: Palette, desc: lang === 'ko' ? '부드러운 색상 변화' : 'Smooth color transition' },
+        { label: 'Halftone' as StyleOption, icon: Grid, desc: lang === 'ko' ? '망점 패턴 효과' : 'Dot pattern effect' },
+        { label: 'Noise' as StyleOption, icon: Wind, desc: lang === 'ko' ? '거친 입자감의 질감' : 'Gritty grain texture' },
+        { label: 'Soft Shadow' as StyleOption, icon: Cloud, desc: lang === 'ko' ? '부드러운 그림자 효과' : 'Soft shadow effect' },
       ]
     }] : []),
     // Step 5: Dynamic BACKGROUND/ENVIRONMENT
     ...(selectedDimension === '2D Artwork' ? [{
       title: 'BACKGROUND',
-      key: 'environment',
+      key: 'bg_composition',
       options: [
         { label: 'Solid' as StyleOption, icon: Square, desc: lang === 'ko' ? '깔끔한 단색 배경' : 'Clean solid background' },
         { label: 'Gradient' as StyleOption, icon: Palette, desc: lang === 'ko' ? '부드러운 그라데이션' : 'Smooth gradient background' },
@@ -412,14 +628,45 @@ export default function App() {
         { label: 'Transparent Background' as StyleOption, icon: Maximize, desc: lang === 'ko' ? '투명 배경' : 'Transparent background' },
       ]
     }] : []),
-    ...(selectedDimension !== '2D Artwork' ? [{
-      title: 'ENVIRONMENT',
-      key: 'environment',
+    ...(selectedDimension === '3D Rendering' ? [{
+      title: 'SCENE',
+      key: 'scene',
+      options: [
+        { label: 'Studio' as StyleOption, icon: Camera, desc: lang === 'ko' ? '정교하게 제어된 조명' : 'Precisely controlled lighting' },
+        { label: 'Infinity Wall' as StyleOption, icon: Layers, desc: lang === 'ko' ? '끝이 없는 배경 벽' : 'Seamless infinity wall' },
+        { label: 'Levitation' as StyleOption, icon: Wind, desc: lang === 'ko' ? '공중에 떠 있는 연출' : 'Floating levitation effect' },
+        { label: 'Minimal Room' as StyleOption, icon: Layout, desc: lang === 'ko' ? '심플한 실내 공간' : 'Simple minimal room' },
+      ]
+    }] : []),
+    ...(selectedDimension === '3D Rendering' ? [{
+      title: 'LIGHTING',
+      key: 'lighting_3d',
       options: [
         { label: 'Natural Light' as StyleOption, icon: Sun, desc: lang === 'ko' ? '밝고 화사한 자연광' : 'Bright natural light' },
-        { label: 'Studio' as StyleOption, icon: Camera, desc: lang === 'ko' ? '정교하게 제어된 조명' : 'Precisely controlled lighting' },
         { label: 'Cinematic Neon' as StyleOption, icon: Zap, desc: lang === 'ko' ? '강렬한 색채의 네온' : 'Intense neon colors' },
-        { label: 'Mist' as StyleOption, icon: Wind, desc: lang === 'ko' ? '몽환적인 안개 분위기' : 'Dreamy mist atmosphere' },
+        { label: 'Soft White' as StyleOption, icon: Cloud, desc: lang === 'ko' ? '부드러운 백색광' : 'Soft white lighting' },
+        { label: 'Dark Mood' as StyleOption, icon: Wind, desc: lang === 'ko' ? '몽환적인 안개 분위기' : 'Dreamy dark mist atmosphere' },
+      ]
+    }] : []),
+    ...(selectedDimension === 'Real Photo' ? [{
+      title: 'LIGHTING',
+      key: 'lighting_photo',
+      options: [
+        { label: 'Golden Hour' as StyleOption, icon: Sun, desc: lang === 'ko' ? '따뜻한 일몰의 빛' : 'Warm sunset light' },
+        { label: 'Blue Hour' as StyleOption, icon: Moon, desc: lang === 'ko' ? '차분한 여명의 빛' : 'Calm twilight light' },
+        { label: 'Cinematic Neon' as StyleOption, icon: Zap, desc: lang === 'ko' ? '강렬한 색채의 네온' : 'Intense neon colors' },
+        { label: 'Natural Light' as StyleOption, icon: CloudSun, desc: lang === 'ko' ? '밝고 화사한 자연광' : 'Bright natural light' },
+        { label: 'Dark Mood' as StyleOption, icon: Wind, desc: lang === 'ko' ? '몽환적인 안개 분위기' : 'Dreamy dark mist atmosphere' },
+      ]
+    }] : []),
+    ...(selectedDimension === 'Icon' ? [{
+      title: 'CONTAINER',
+      key: 'icon_container',
+      options: [
+        { label: 'None' as StyleOption, icon: X, desc: lang === 'ko' ? '컨테이너 없음' : 'No container' },
+        { label: 'Circle' as StyleOption, icon: Circle, desc: lang === 'ko' ? '원형 컨테이너' : 'Circular container' },
+        { label: 'Square' as StyleOption, icon: Square, desc: lang === 'ko' ? '사각형 컨테이너' : 'Square container' },
+        { label: 'Organic Curve' as StyleOption, icon: Cloud, desc: lang === 'ko' ? '유기적인 곡선 형태' : 'Organic curved shape' },
       ]
     }] : [])
   ];
@@ -466,10 +713,26 @@ export default function App() {
     return minDistance < 60 ? closest : hex;
   };
 
-  const cameraOptions = ['Eye Level', 'High Angle', 'Low Angle', 'Top View'];
+  const cameraOptions = ['Eye Level', 'High Angle', 'Low Angle', 'Top View', 'Isometric'];
   const ratioOptions = ['1:1', '4:5', '16:9', '9:16', '3:2', '2:3'];
 
   const toggleOption = (option: StyleOption) => {
+    // Upsell Trigger for PRO features
+    if (userTier === 'FREE') {
+      const isIconMode = selectedDimension === 'Icon';
+      const isProFeature = 
+        (isIconMode && option === 'None') || 
+        (isIconMode && option === 'Glass') || 
+        (option === 'Realism') ||
+        (option === 'Transparent Glass');
+
+      if (isProFeature) {
+        setUpgradeReason(t.proOnlyDesc);
+        setShowUpgradeModal(true);
+        return;
+      }
+    }
+
     setIsDesigning(true);
     setTimeout(() => setIsDesigning(false), 800);
 
@@ -519,11 +782,6 @@ export default function App() {
       reader.onloadend = async () => {
         const base64 = reader.result as string;
         setReferenceImage(base64);
-        
-        // Reset previous settings before analyzing new image
-        setSelectedOptions([]);
-        setSelectedBgColors([]);
-        setSelectedObjectColors([]);
         
         // Auto-analyze
         setAnalyzing(true);
@@ -579,6 +837,13 @@ export default function App() {
   const handleGenerateAll = async () => {
     if (!idea.trim()) return;
     
+    // Check Daily Limit for FREE users
+    if (userTier === 'FREE' && generationCount >= 3) {
+      setUpgradeReason(t.limitReachedDesc);
+      setShowUpgradeModal(true);
+      return;
+    }
+
     // Filter selectedOptions to only include currently active/visible options
     const activeOptions = selectedOptions.filter(opt => 
       styleCategories.some(cat => cat.options.some(o => o.label === opt))
@@ -592,6 +857,8 @@ export default function App() {
     setImageError(null);
 
     try {
+      let finalPromptRes: PromptExpansion | null = null;
+
       // Run both in parallel but handle them separately to allow partial success
       const promptPromise = expandPrompt(
         idea, 
@@ -603,8 +870,10 @@ export default function App() {
         lang,
         referenceImage || undefined
       ).then(res => {
+        finalPromptRes = res;
         setResult(res);
         setLoading(false);
+        return res;
       });
 
       const imagePromise = generateWallpaper(
@@ -616,6 +885,7 @@ export default function App() {
         selectedRatio as any
       ).then(url => {
         setGeneratedImage(url);
+        return url;
       })
       .catch(err => {
         console.error("Image generation failed:", err);
@@ -624,10 +894,31 @@ export default function App() {
         } else {
           setImageError(lang === 'ko' ? '이미지 생성에 실패했습니다.' : 'Image generation failed.');
         }
+        return null;
       })
       .finally(() => setGeneratingImage(false));
 
-      await Promise.all([promptPromise, imagePromise]);
+      const [promptRes] = await Promise.all([promptPromise, imagePromise]);
+
+      // Save to history if prompt generation was successful
+      if (promptRes) {
+        setGenerationCount(prev => prev + 1);
+        const newLog: HistoryLog = {
+          id: `#${String(history.length + 1).padStart(3, '0')}`,
+          date: new Date().toISOString().split('T')[0],
+          visualStyle: selectedDimension || 'None',
+          subject: idea,
+          options: [...activeOptions],
+          prompt: promptRes.midjourney,
+          insights: promptRes.insight,
+          camera: selectedCamera,
+          ratio: selectedRatio,
+          bgColors: [...selectedBgColors],
+          objColors: [...selectedObjectColors],
+          referenceImage: referenceImage
+        };
+        setHistory(prev => [newLog, ...prev]);
+      }
     } catch (error: any) {
       console.error("Overall generation failed:", error);
       if (error.message?.includes('429') || error.message?.includes('quota')) {
@@ -639,6 +930,24 @@ export default function App() {
       setLoading(false);
       setGeneratingImage(false);
     }
+  };
+
+  const restoreHistory = (log: HistoryLog) => {
+    setIdea(log.subject);
+    setSelectedOptions(log.options);
+    setSelectedBgColors(log.bgColors);
+    setSelectedObjectColors(log.objColors);
+    setSelectedCamera(log.camera);
+    setSelectedRatio(log.ratio);
+    setReferenceImage(log.referenceImage);
+    setResult({
+      prompt: log.prompt,
+      insight: log.insights
+    });
+    setGeneratedImage(null); // Reset image as it's a new session
+    setActiveTab('CREATE');
+    setRestoreMessage(lang === 'ko' ? '이전 설정을 불러왔습니다' : 'Previous settings restored');
+    setTimeout(() => setRestoreMessage(null), 3000);
   };
 
   // Map colors to names if they are in the palette, otherwise keep hex
@@ -707,23 +1016,27 @@ export default function App() {
   return (
     <div className="relative min-h-screen flex flex-col items-center">
       {/* Background Container */}
-      <div 
-        className="fixed inset-0 -z-10 bg-no-repeat bg-cover bg-[#020205]"
-        style={{
-          backgroundImage: `url('https://github.com/primobeat/prompt-creator/blob/main/u6997844369_A_hyper-realistic_profile_view_of_a_cyberpunk_wom_5915a2c6-0c39-48d5-a497-c36672a0e063_1.png?raw=true')`,
-          backgroundPosition: 'right center',
-          backgroundAttachment: 'fixed'
-        }}
-      >
+      <div className="fixed inset-0 -z-10 overflow-hidden bg-[#020205]">
+        <motion.div 
+          initial={{ opacity: 0, scale: 1.1 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1.5 }}
+          className="absolute inset-0 bg-no-repeat bg-cover bg-right-top md:bg-right"
+          style={{
+            backgroundImage: `url('https://raw.githubusercontent.com/primobeat/prompt-creator/main/u6997844369_A_hyper-realistic_profile_view_of_a_cyberpunk_wom_5915a2c6-0c39-48d5-a497-c36672a0e063_1.png')`,
+            backgroundAttachment: 'fixed'
+          }}
+        />
+
         {/* Subtle Purple-Blue Gradient Overlay for readability and mood */}
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-950/80 via-slate-950/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-950/60 via-slate-950/40 to-transparent" />
         
         {/* Subtle Grain Texture */}
-        <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+        <div className="absolute inset-0 opacity-[0.05] mix-blend-overlay pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
         
         {/* Intense Glowing Accents (Subtle) */}
-        <div className="absolute top-[-5%] left-[-5%] w-[50%] h-[50%] bg-indigo-600/5 blur-[140px] rounded-full" />
-        <div className="absolute bottom-[-5%] right-[-5%] w-[50%] h-[50%] bg-blue-600/5 blur-[140px] rounded-full" />
+        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-indigo-500/10 blur-[160px] rounded-full animate-pulse-slow" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-blue-500/10 blur-[160px] rounded-full animate-pulse-slow" />
       </div>
 
       <div className="relative z-10 w-full flex flex-col items-center p-6 md:p-12 min-h-screen">
@@ -753,17 +1066,81 @@ export default function App() {
             </button>
           </div>
 
-          <h1 className="text-3xl md:text-5xl font-display font-bold tracking-tight text-white mb-3">
+          <h1 
+            onClick={resetApp}
+            className="text-3xl md:text-5xl font-display font-bold tracking-tight text-white mb-3 cursor-pointer hover:opacity-80 transition-opacity"
+          >
             AI ImagiGen
           </h1>
-          <p className="text-[10px] md:text-xs font-bold uppercase tracking-[0.4em] text-white/40">
+          <p className="text-[10px] md:text-xs font-bold uppercase tracking-[0.4em] text-white/40 mb-8">
             {t.subtitle}
           </p>
+
+          {/* Tabs */}
+          <div className="flex items-center justify-center gap-12 mx-auto">
+            <button
+              onClick={() => setActiveTab('CREATE')}
+              className={`relative py-2 text-[11px] font-bold tracking-[0.3em] transition-all ${activeTab === 'CREATE' ? 'text-white' : 'text-white/30 hover:text-white/60'}`}
+            >
+              CREATE
+              {activeTab === 'CREATE' && (
+                <motion.div 
+                  layoutId="activeTab"
+                  className="absolute bottom-0 left-0 right-0 h-[2px] bg-white"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('HISTORY')}
+              className={`relative py-2 text-[11px] font-bold tracking-[0.3em] transition-all ${activeTab === 'HISTORY' ? 'text-white' : 'text-white/30 hover:text-white/60'}`}
+            >
+              HISTORY
+              {activeTab === 'HISTORY' && (
+                <motion.div 
+                  layoutId="activeTab"
+                  className="absolute bottom-0 left-0 right-0 h-[2px] bg-white"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('UPGRADE')}
+              className={`relative py-2 text-[11px] font-bold tracking-[0.3em] transition-all flex items-center gap-2 ${activeTab === 'UPGRADE' ? 'text-white' : 'text-white/30 hover:text-white/60'}`}
+            >
+              UPGRADE
+              <span className="px-1.5 py-0.5 rounded-md bg-[#0071e3] text-[8px] text-white font-black tracking-normal">PRO</span>
+              {activeTab === 'UPGRADE' && (
+                <motion.div 
+                  layoutId="activeTab"
+                  className="absolute bottom-0 left-0 right-0 h-[2px] bg-white"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+            </button>
+          </div>
         </motion.header>
 
+        {/* Restore Message Notification */}
+        <AnimatePresence>
+          {restoreMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl bg-emerald-500 text-white text-xs font-bold shadow-2xl flex items-center gap-2"
+            >
+              <Check className="w-4 h-4" />
+              {restoreMessage}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <main className="w-full max-w-7xl mx-auto space-y-12">
-          {/* Top: Input Section */}
-          <div className="max-w-2xl mx-auto w-full space-y-6">
+          {activeTab === 'CREATE' ? (
+            <>
+              {/* Top: Input Section */}
+              <div className="max-w-2xl mx-auto w-full space-y-6">
             <motion.div 
               layout
               initial={{ opacity: 0, y: 20 }}
@@ -777,7 +1154,7 @@ export default function App() {
                   onChange={(e) => setIdea(e.target.value)}
                   onFocus={() => setIsEditing(true)}
                   placeholder={t.placeholder}
-                  className="w-full h-20 p-6 rounded-3xl bg-white/5 backdrop-blur-2xl border border-white/20 focus:border-white/40 focus:bg-white/10 outline-none transition-all text-lg placeholder:text-white/20 resize-none text-white text-center shadow-2xl"
+                  className="w-full h-20 p-6 rounded-full bg-white/5 backdrop-blur-2xl border border-white/20 focus:border-white/40 focus:bg-white/10 outline-none transition-all text-lg placeholder:text-white/20 resize-none text-white text-center shadow-2xl"
                 />
               </div>
             </motion.div>
@@ -789,9 +1166,9 @@ export default function App() {
                   initial={{ opacity: 0, height: 0, y: 20 }}
                   animate={{ opacity: 1, height: 'auto', y: 0 }}
                   exit={{ opacity: 0, height: 0, y: 20 }}
-                  className="overflow-hidden"
+                  className="overflow-visible px-4 pb-12 -mx-4 -mb-12"
                 >
-                  <div className="space-y-6 bg-white/[0.03] backdrop-blur-3xl border border-white/10 p-8 rounded-[2.5rem] shadow-2xl mt-4 relative">
+                  <div className="space-y-6 bg-white/[0.03] backdrop-blur-3xl border border-white/10 p-8 rounded-[2.5rem] shadow-2xl mt-4 relative overflow-hidden">
                     {/* Close Settings Button (only if results exist) */}
                     {(result || generatedImage) && (
                       <button 
@@ -857,10 +1234,16 @@ export default function App() {
                             <div className="space-y-8">
                               {subCategories.map((category) => {
                                 const CategoryIcon = 
-                                  category.key === 'form' ? PenTool :
+                                  category.key === 'icon_style' ? Pencil :
+                                  category.key === 'icon_finish' ? Layers :
+                                  category.key === 'icon_container' ? Box :
+                                  category.key === 'form' || category.key === 'technique' ? PenTool :
                                   category.key === 'subject' ? ImageIcon :
-                                  category.key === 'finish' ? Layers :
+                                  category.key === 'finish' || category.key === 'texture_effect' ? Layers :
                                   category.key === 'shotType' ? Maximize :
+                                  category.key === 'structure' ? (selectedDimension === 'Real Photo' ? Aperture : Box) :
+                                  category.key === 'material' ? (selectedDimension === 'Real Photo' ? Move : Gem) :
+                                  category.key === 'scene' || category.key === 'bg_composition' ? Layout :
                                   Sun;
                                 return (
                                   <div key={category.key} className="space-y-4">
@@ -942,7 +1325,14 @@ export default function App() {
                                     {/* Custom BG Color Button */}
                                     <div className="relative" ref={bgButtonRef}>
                                       <button
-                                        onClick={() => setActivePickerType(activePickerType === 'bg' ? null : 'bg')}
+                                        onClick={() => {
+                                          if (activeCustomBg) {
+                                            setSelectedBgColors(prev => prev.filter(c => c !== activeCustomBg));
+                                            setActivePickerType(null);
+                                          } else {
+                                            setActivePickerType(activePickerType === 'bg' ? null : 'bg');
+                                          }
+                                        }}
                                         className={`group relative w-8 h-8 rounded-full transition-all duration-300 flex items-center justify-center border-2 ${
                                           activePickerType === 'bg' || activeCustomBg
                                             ? 'border-transparent ring-2 ring-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)]' 
@@ -1004,7 +1394,14 @@ export default function App() {
                                     {/* Custom Object Color Button */}
                                     <div className="relative" ref={objectButtonRef}>
                                       <button
-                                        onClick={() => setActivePickerType(activePickerType === 'object' ? null : 'object')}
+                                        onClick={() => {
+                                          if (activeCustomObj) {
+                                            setSelectedObjectColors(prev => prev.filter(c => c !== activeCustomObj));
+                                            setActivePickerType(null);
+                                          } else {
+                                            setActivePickerType(activePickerType === 'object' ? null : 'object');
+                                          }
+                                        }}
                                         className={`group relative w-8 h-8 rounded-full transition-all duration-300 flex items-center justify-center border-2 ${
                                           activePickerType === 'object' || activeCustomObj
                                             ? 'border-transparent ring-2 ring-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)]' 
@@ -1131,7 +1528,7 @@ export default function App() {
 
           {/* Results Section: Horizontal Grid */}
           <AnimatePresence mode="wait">
-            {!isEditing && (loading || generatingImage || result || generatedImage || imageError) && (
+            {(loading || generatingImage || result || generatedImage || imageError) && (
               <motion.div 
                 initial={{ opacity: 0, y: 40 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1368,6 +1765,223 @@ export default function App() {
               </motion.div>
             )}
           </AnimatePresence>
+        </>
+      ) : activeTab === 'HISTORY' ? (
+        /* History Tab Content */
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="w-full max-w-4xl mx-auto space-y-6"
+            >
+              {userTier === 'TEAM' && (
+                <div className="flex items-center justify-between p-6 rounded-[2rem] bg-[#0071e3]/10 border border-[#0071e3]/20 backdrop-blur-xl">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-2xl bg-[#0071e3]/20">
+                      <Users className="w-6 h-6 text-[#0071e3]" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-white tracking-tight">
+                        {lang === 'ko' ? '공동 HISTORY 작업실' : 'Shared TEAM Workspace'}
+                      </h4>
+                      <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">
+                        {lang === 'ko' ? '팀원들과 실시간으로 기록을 공유하고 있습니다' : 'Sharing history with team members in real-time'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex -space-x-2">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="w-8 h-8 rounded-full border-2 border-[#0a0a0a] bg-white/10 flex items-center justify-center text-[10px] font-bold text-white">
+                        {String.fromCharCode(64 + i)}
+                      </div>
+                    ))}
+                    <div className="w-8 h-8 rounded-full border-2 border-[#0a0a0a] bg-[#0071e3] flex items-center justify-center text-[10px] font-bold text-white">
+                      +5
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {history.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-32 text-white/20 space-y-4">
+                  <Clock className="w-16 h-16" />
+                  <p className="text-sm font-bold tracking-widest uppercase">
+                    {lang === 'ko' ? '아직 생성된 기록이 없습니다' : 'No history yet'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {history.map((log) => (
+                    <div 
+                      key={log.id}
+                      className="group p-1 rounded-[2rem] bg-white/5 backdrop-blur-2xl border border-white/10 hover:border-white/20 transition-all"
+                    >
+                      <div className="p-6 space-y-6">
+                        {/* Summary Header */}
+                        <div className="flex flex-wrap items-center justify-between gap-4">
+                          <div className="flex items-center gap-4">
+                            <span className="px-3 py-1 rounded-lg bg-white/10 text-[10px] font-black text-white/60 tracking-widest">
+                              {log.id}
+                            </span>
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-white">
+                                  {log.visualStyle} - {log.subject}
+                                </span>
+                                <span className="text-[10px] text-white/40">
+                                  {log.date}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                {log.options.slice(0, 3).map((opt, i) => (
+                                  <span key={i} className="text-[9px] text-white/30 uppercase tracking-tighter">
+                                    {opt}{i < Math.min(log.options.length, 3) - 1 ? ' /' : ''}
+                                  </span>
+                                ))}
+                                {log.options.length > 3 && (
+                                  <span className="text-[9px] text-white/30">...</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleCopy(log.prompt, log.id)}
+                              className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-bold text-white/60 hover:bg-white/10 hover:text-white transition-all flex items-center gap-2"
+                            >
+                              {copiedId === log.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                              {lang === 'ko' ? '복사하기' : 'COPY'}
+                            </button>
+                            <button
+                              onClick={() => restoreHistory(log)}
+                              className="px-4 py-2 rounded-xl bg-[#0071e3]/20 border border-[#0071e3]/40 text-[10px] font-bold text-[#0071e3] hover:bg-[#0071e3]/40 transition-all flex items-center gap-2"
+                            >
+                              <RefreshCw className="w-3 h-3" />
+                              {lang === 'ko' ? '불러오기' : 'RESTORE'}
+                            </button>
+                            <button
+                              onClick={() => setSelectedHistoryId(selectedHistoryId === log.id ? null : log.id)}
+                              className="p-2 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white transition-all"
+                            >
+                              <ChevronDown className={`w-4 h-4 transition-transform ${selectedHistoryId === log.id ? 'rotate-180' : ''}`} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Detailed View */}
+                        <AnimatePresence>
+                          {selectedHistoryId === log.id && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="pt-6 border-t border-white/10 space-y-6">
+                                {/* Insights */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                  {Object.entries(log.insights.visual_balance).map(([key, val]) => (
+                                    <div key={key} className="p-3 rounded-2xl bg-white/5 border border-white/5">
+                                      <div className="text-[8px] uppercase tracking-widest text-white/40 mb-1">{key}</div>
+                                      <div className="text-sm font-bold text-white">{val}%</div>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {/* Prompt */}
+                                <div className="p-6 rounded-2xl bg-black/40 border border-white/5">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">PROMPT LOG</span>
+                                  </div>
+                                  <p className="text-xs leading-relaxed text-white/80 font-mono italic">
+                                    {log.prompt}
+                                  </p>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          ) : (
+            /* Upgrade Tab Content */
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="w-full max-w-6xl mx-auto space-y-12"
+            >
+              <div className="text-center space-y-4 mb-12">
+                <h2 className="text-4xl font-black text-white tracking-tighter">
+                  {lang === 'ko' ? '당신에게 맞는 요금제를 선택하세요' : 'Choose the plan that fits you'}
+                </h2>
+                <p className="text-white/40 text-sm tracking-widest uppercase font-bold">
+                  {lang === 'ko' ? '더 강력한 기능으로 창의력을 발휘하세요' : 'Unleash your creativity with more power'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {['FREE', 'PRO', 'TEAM'].map((tier) => (
+                  <div 
+                    key={tier}
+                    className={`relative p-8 rounded-[2.5rem] backdrop-blur-3xl border transition-all duration-500 ${
+                      userTier === tier 
+                        ? 'bg-white/10 border-white/40 shadow-[0_0_50px_-12px_rgba(255,255,255,0.2)]' 
+                        : 'bg-white/5 border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex flex-col h-full space-y-6">
+                      <div className="space-y-2">
+                        <h3 className="text-2xl font-black text-white tracking-tight">{tier}</h3>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-3xl font-black text-white">{t.pricing[tier.toLowerCase() as keyof typeof t.pricing].price}</span>
+                          <span className="text-white/40 text-[10px] font-bold uppercase tracking-widest">/ month</span>
+                        </div>
+                      </div>
+
+                      <div className="h-px bg-white/10 w-full" />
+
+                      <ul className="space-y-4">
+                        {t.pricing[tier.toLowerCase() as keyof typeof t.pricing].features.map((feature: string, i: number) => (
+                          <li key={i} className="flex items-start gap-3">
+                            <div className="mt-1 p-0.5 rounded-full bg-[#0071e3]/20">
+                              <Check className="w-3 h-3 text-[#0071e3]" />
+                            </div>
+                            <span className="text-xs text-white/70 leading-relaxed font-medium">{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      <button
+                        onClick={() => {
+                          if (tier !== 'FREE') {
+                            setUserTier(tier as 'FREE' | 'PRO' | 'TEAM');
+                            setRestoreMessage(lang === 'ko' ? `${tier} 요금제로 업그레이드되었습니다!` : `Upgraded to ${tier} plan!`);
+                            setTimeout(() => setRestoreMessage(null), 3000);
+                          }
+                        }}
+                        disabled={userTier === tier}
+                        className={`w-full mt-auto py-4 rounded-2xl text-[11px] font-black tracking-[0.2em] uppercase transition-all ${
+                          userTier === tier
+                            ? 'bg-white/5 border border-white/10 text-white/20 cursor-default'
+                            : (tier === 'PRO' || tier === 'TEAM')
+                              ? 'bg-white text-black hover:scale-[1.02] active:scale-[0.98]'
+                              : 'bg-white/10 text-white hover:bg-white/20 hover:scale-[1.02] active:scale-[0.98]'
+                        }`}
+                      >
+                        {userTier === tier 
+                          ? (lang === 'ko' ? '사용 중' : 'ACTIVE') 
+                          : (lang === 'ko' ? '선택하기' : 'SELECT PLAN')}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
         </main>
 
         {/* Footer */}
@@ -1409,13 +2023,64 @@ export default function App() {
             <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
               <Zap className="w-3 h-3 text-amber-400" />
               <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/60">
-                Powered by Gemini 2.5 Flash (Free Tier)
+                Powered by Gemini 2.5 Flash ({userTier} Tier)
               </span>
             </div>
           </div>
         </footer>
       </div>
       <AnimatePresence>
+        {showUpgradeModal && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowUpgradeModal(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-lg bg-[#1a1a1a] border border-white/10 rounded-[3rem] overflow-hidden shadow-2xl"
+            >
+              <div className="p-12 text-center space-y-8">
+                <div className="w-20 h-20 bg-indigo-500/20 rounded-3xl flex items-center justify-center mx-auto">
+                  <Zap className="w-10 h-10 text-indigo-400" />
+                </div>
+                
+                <div className="space-y-4">
+                  <h3 className="text-3xl font-black text-white tracking-tighter uppercase">
+                    {upgradeReason === 'limit' ? t.upgrade.limitReached : t.upgrade.proOnly}
+                  </h3>
+                  <p className="text-white/60 text-sm leading-relaxed">
+                    {upgradeReason === 'limit' ? t.upgrade.limitReachedDesc : t.upgrade.proOnlyDesc}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <button
+                    onClick={() => {
+                      setShowUpgradeModal(false);
+                      setActiveTab('UPGRADE');
+                    }}
+                    className="w-full py-5 rounded-2xl bg-white text-black text-[11px] font-black tracking-[0.2em] uppercase hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  >
+                    {t.upgrade.upgradeBtn}
+                  </button>
+                  <button
+                    onClick={() => setShowUpgradeModal(false)}
+                    className="w-full py-5 rounded-2xl bg-white/5 text-white/40 text-[11px] font-black tracking-[0.2em] uppercase hover:text-white transition-all"
+                  >
+                    {lang === 'ko' ? '나중에 하기' : 'MAYBE LATER'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {activePickerType && (
           <>
             {/* Transparent Backdrop to catch clicks without dimming */}
@@ -1456,9 +2121,15 @@ export default function App() {
                   onChange={(color) => {
                     setCustomColor(color);
                     if (activePickerType === 'bg') {
-                      setSelectedBgColors(prev => prev.includes(color) ? prev : [...prev, color]);
+                      setSelectedBgColors(prev => {
+                        const filtered = activeCustomBg ? prev.filter(c => c !== activeCustomBg) : prev;
+                        return filtered.includes(color) ? filtered : [...filtered, color];
+                      });
                     } else {
-                      setSelectedObjectColors(prev => prev.includes(color) ? prev : [...prev, color]);
+                      setSelectedObjectColors(prev => {
+                        const filtered = activeCustomObj ? prev.filter(c => c !== activeCustomObj) : prev;
+                        return filtered.includes(color) ? filtered : [...filtered, color];
+                      });
                     }
                   }} 
                 />
