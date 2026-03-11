@@ -69,7 +69,7 @@ const CustomDropdown = ({
     <div className="space-y-2 relative" ref={dropdownRef}>
       <div className="flex items-center gap-1.5 ml-1">
         {Icon && <Icon className="w-3 h-3 text-white" />}
-        <label className="text-[10px] font-sans font-semibold uppercase tracking-[0.2em] text-white">
+        <label className="text-[10px] font-sans tracking-[0.2em] text-white">
           {label}
         </label>
       </div>
@@ -242,6 +242,11 @@ export default function App() {
       designing: "Designing...",
       readyTitle: "Ready?",
       readyDesc: "Select styles, add ideas, and get your prompt.",
+      tabs: {
+        create: "Create",
+        history: "History",
+        upgrade: "Upgrade"
+      },
       styles: {
         'Minimalist': 'Minimalist',
         'Geometric': 'Geometric',
@@ -332,26 +337,26 @@ export default function App() {
       },
       forging: "Generating image...",
       upgrade: "Upgrade",
-      proOnly: "PRO Exclusive",
-      proOnlyDesc: "This feature is only available for PRO users.",
+      proOnly: "Pro Exclusive",
+      proOnlyDesc: "This feature is only available for Pro users.",
       limitReached: "Daily Limit Reached",
       limitReachedDesc: "You have reached your daily limit of 3 generations.",
-      upgradeBtn: "Upgrade to PRO",
+      upgradeBtn: "Upgrade to Pro",
       pricing: {
         free: {
-          name: "FREE",
+          name: "Free",
           price: "$0",
           period: "Forever",
           features: ["3 generations / day", "Standard quality", "Ad-supported prompts"]
         },
         pro: {
-          name: "PRO",
+          name: "Pro",
           price: "$29",
           period: "per month",
           features: ["Unlimited generations", "High resolution (4K)", "All icon styles unlocked", "No ads"]
         },
         team: {
-          name: "TEAM",
+          name: "Team",
           price: "$99",
           period: "per month",
           features: ["Shared history workspace", "Commercial license", "Priority generation", "Admin dashboard"]
@@ -401,6 +406,11 @@ export default function App() {
       designing: "설계 중...",
       readyTitle: "준비 완료!",
       readyDesc: "스타일과 아이디어를 조합해 프롬프트를 생성해 보세요.",
+      tabs: {
+        create: "생성",
+        history: "기록",
+        upgrade: "업그레이드"
+      },
       styles: {
         'Minimalist': '미니멀리즘',
         'Geometric': '기하학',
@@ -491,29 +501,29 @@ export default function App() {
       },
       forging: "이미지 생성 중...",
       upgrade: "업그레이드",
-      proOnly: "PRO 전용 기능",
-      proOnlyDesc: "이 기능은 PRO 요금제에서만 사용 가능합니다.",
+      proOnly: "Pro 전용 기능",
+      proOnlyDesc: "이 기능은 Pro 요금제에서만 사용 가능합니다.",
       limitReached: "일일 생성 한도 초과",
       limitReachedDesc: "무료 요금제의 일일 한도(3회)를 모두 사용하셨습니다.",
-      upgradeBtn: "PRO로 업그레이드",
+      upgradeBtn: "Pro로 업그레이드",
       pricing: {
         free: {
-          name: "FREE",
+          name: "Free",
           price: "무료",
           period: "평생",
           features: ["하루 3회 생성 가능", "기본 화질", "광고 포함 프롬프트"]
         },
         pro: {
-          name: "PRO",
+          name: "Pro",
           price: "$29",
           period: "월",
           features: ["무제한 생성", "고해상도(4K)", "모든 아이콘 스타일 개방", "광고 제거"]
         },
         team: {
-          name: "TEAM",
+          name: "Team",
           price: "$99",
           period: "월",
-          features: ["공동 HISTORY 작업실", "기업용 상업 라이선스", "우선 생성권", "관리자 대시보드"]
+          features: ["공동 History 작업실", "기업용 상업 라이선스", "우선 생성권", "관리자 대시보드"]
         }
       }
     }
@@ -1091,19 +1101,19 @@ export default function App() {
           className="text-center mb-16 relative w-full"
         >
           {/* Language Toggle */}
-          <div className="absolute right-0 top-0 flex gap-2">
+          <div className="absolute right-0 top-0 flex gap-2 z-50">
             <button
-              onClick={() => setLang('en')}
-              className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${
-                lang === 'en' ? 'bg-white text-black' : 'bg-white/5 text-white/40 hover:bg-white/10'
+              onClick={(e) => { e.preventDefault(); setLang('en'); }}
+              className={`px-3 py-1 rounded-full text-[10px] transition-all ${
+                lang === 'en' ? 'bg-white text-black font-bold' : 'bg-white/5 text-white/40 hover:bg-white/10'
               }`}
             >
               EN
             </button>
             <button
-              onClick={() => setLang('ko')}
-              className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${
-                lang === 'ko' ? 'bg-white text-black' : 'bg-white/5 text-white/40 hover:bg-white/10'
+              onClick={(e) => { e.preventDefault(); setLang('ko'); }}
+              className={`px-3 py-1 rounded-full text-[10px] transition-all ${
+                lang === 'ko' ? 'bg-white text-black font-bold' : 'bg-white/5 text-white/40 hover:bg-white/10'
               }`}
             >
               KO
@@ -1116,7 +1126,7 @@ export default function App() {
           >
             AI ImagiGen
           </h1>
-          <p className="text-[10px] md:text-xs font-bold uppercase tracking-[0.4em] text-white/40 mb-8">
+          <p className="text-[10px] md:text-xs tracking-[0.4em] text-white/40 mb-8">
             {t.subtitle}
           </p>
 
@@ -1124,7 +1134,7 @@ export default function App() {
           <div className="flex items-center justify-center gap-12 mx-auto">
             <button
               onClick={() => setActiveTab('CREATE')}
-              className={`relative py-2 text-[11px] font-bold tracking-[0.3em] transition-all ${activeTab === 'CREATE' ? 'text-white' : 'text-white/30 hover:text-white/60'}`}
+              className={`relative py-2 text-[11px] tracking-[0.3em] transition-all ${activeTab === 'CREATE' ? 'text-white font-bold' : 'text-white/30 hover:text-white/60'}`}
             >
               CREATE
               {activeTab === 'CREATE' && (
@@ -1137,7 +1147,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab('HISTORY')}
-              className={`relative py-2 text-[11px] font-bold tracking-[0.3em] transition-all ${activeTab === 'HISTORY' ? 'text-white' : 'text-white/30 hover:text-white/60'}`}
+              className={`relative py-2 text-[11px] tracking-[0.3em] transition-all ${activeTab === 'HISTORY' ? 'text-white font-bold' : 'text-white/30 hover:text-white/60'}`}
             >
               HISTORY
               {activeTab === 'HISTORY' && (
@@ -1150,10 +1160,10 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab('UPGRADE')}
-              className={`relative py-2 text-[11px] font-bold tracking-[0.3em] transition-all flex items-center gap-2 ${activeTab === 'UPGRADE' ? 'text-white' : 'text-white/30 hover:text-white/60'}`}
+              className={`relative py-2 text-[11px] tracking-[0.3em] transition-all flex items-center gap-2 ${activeTab === 'UPGRADE' ? 'text-white font-bold' : 'text-white/30 hover:text-white/60'}`}
             >
               UPGRADE
-              <span className="px-1.5 py-0.5 rounded-md bg-[#0071e3] text-[8px] text-white font-black tracking-normal">PRO</span>
+              <span className="px-1.5 py-0.5 rounded-md bg-[#0071e3] text-[8px] text-white font-bold tracking-normal">Pro</span>
               {activeTab === 'UPGRADE' && (
                 <motion.div 
                   layoutId="activeTab"
@@ -1235,7 +1245,7 @@ export default function App() {
                             <div key={category.key} className="space-y-4">
                               <div className="flex items-center gap-2 ml-1">
                                 <CategoryIcon className="w-4 h-4 text-white" />
-                                <span className="text-[11px] font-sans font-bold uppercase tracking-[0.2em] text-white">
+                                <span className="text-[11px] font-sans tracking-[0.2em] text-white">
                                   {t[category.key as keyof typeof t] as string}
                                 </span>
                               </div>
@@ -1294,7 +1304,7 @@ export default function App() {
                                   <div key={category.key} className="space-y-4">
                                     <div className="flex items-center gap-2 ml-1">
                                       <CategoryIcon className="w-3.5 h-3.5 text-white/60" />
-                                      <span className="text-[10px] font-sans font-bold uppercase tracking-[0.2em] text-white/60">
+                                      <span className="text-[10px] font-sans tracking-[0.2em] text-white/60">
                                         {t[category.key as keyof typeof t] as string}
                                       </span>
                                     </div>
@@ -1333,7 +1343,7 @@ export default function App() {
                                 <div className="space-y-3">
                                   <div className="flex items-center gap-1.5 ml-1">
                                     <Droplets className="w-3 h-3 text-white" />
-                                    <span className="text-[10px] font-sans font-semibold uppercase tracking-[0.2em] text-white">
+                                    <span className="text-[10px] font-sans tracking-[0.2em] text-white">
                                       {t.bgColor}
                                     </span>
                                   </div>
@@ -1402,7 +1412,7 @@ export default function App() {
                                 <div className="space-y-3">
                                   <div className="flex items-center gap-1.5 ml-1">
                                     <Box className="w-3 h-3 text-white" />
-                                    <span className="text-[10px] font-sans font-semibold uppercase tracking-[0.2em] text-white">
+                                    <span className="text-[10px] font-sans tracking-[0.2em] text-white">
                                       {t.objColor}
                                     </span>
                                   </div>
@@ -1498,7 +1508,7 @@ export default function App() {
                             <div className="space-y-2">
                               <div className="flex items-center gap-1.5 ml-1">
                                 <ImageIcon className="w-3 h-3 text-white" />
-                                <label className="text-[11px] font-sans font-bold uppercase tracking-[0.25em] text-white">
+                                <label className="text-[11px] font-sans tracking-[0.25em] text-white">
                                   {t.refImage}
                                 </label>
                               </div>
@@ -1510,7 +1520,7 @@ export default function App() {
                                 {analyzing && (
                                   <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
                                     <RefreshCw className="w-6 h-6 text-white animate-spin" />
-                                    <span className="text-[10px] uppercase tracking-[0.2em] text-white font-bold animate-pulse">
+                                    <span className="text-[10px] tracking-[0.2em] text-white animate-pulse">
                                       {t.analyzing}
                                     </span>
                                   </div>
@@ -1530,7 +1540,7 @@ export default function App() {
                                 ) : (
                                   <>
                                     <ImageIcon className="w-6 h-6 text-white/20 group-hover:text-white/40 transition-colors" />
-                                    <span className="text-[10px] uppercase tracking-widest text-white/30 group-hover:text-white/50 transition-colors px-4 text-center">
+                                    <span className="text-[10px] tracking-widest text-white/30 group-hover:text-white/50 transition-colors px-4 text-center">
                                       {t.uploadDesc}
                                     </span>
                                     <input 
@@ -1549,7 +1559,7 @@ export default function App() {
                               <button
                                 onClick={handleGenerateAll}
                                 disabled={loading || generatingImage || !idea.trim()}
-                                className="w-full py-5 bg-[#0071e3] text-white rounded-[2rem] font-bold text-xs uppercase tracking-[0.2em] transition-all hover:bg-[#0077ed] disabled:opacity-20 disabled:cursor-not-allowed shadow-[0_15px_50px_rgba(0,113,227,0.4)] flex items-center justify-center gap-3"
+                                className="w-full py-5 bg-[#0071e3] text-white rounded-[2rem] font-bold text-xs tracking-[0.2em] transition-all hover:bg-[#0077ed] disabled:opacity-20 disabled:cursor-not-allowed shadow-[0_15px_50px_rgba(0,113,227,0.4)] flex items-center justify-center gap-3"
                               >
                                 {loading || generatingImage ? (
                                   <RefreshCw className="w-5 h-5 animate-spin" />
@@ -1585,9 +1595,9 @@ export default function App() {
                     <div className="mb-6">
                       <RefreshCw className="w-10 h-10 text-white animate-spin" />
                     </div>
-                    <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/60">
-                      {t.forging}
-                    </span>
+                                  <span className="text-[10px] tracking-[0.3em] text-white/60">
+                                    {t.forging}
+                                  </span>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
@@ -1600,13 +1610,13 @@ export default function App() {
                       >
                         <div className="flex items-center gap-2.5">
                           <Activity className="text-white w-4 h-4" />
-                          <span className="text-[10px] font-sans font-bold uppercase tracking-[0.2em] text-white">{t.insight}</span>
+                          <span className="text-[10px] font-sans tracking-[0.2em] text-white">{t.insight}</span>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                           {/* Visual Balance Radar */}
                           <div className="space-y-4">
-                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/40">
+                            <div className="flex items-center gap-2 text-[10px] tracking-widest text-white/40">
                               {t.visualBalance}
                             </div>
                             <div className="h-[220px] w-full">
@@ -1628,7 +1638,7 @@ export default function App() {
 
                           {/* Texture Density Bar */}
                           <div className="space-y-4">
-                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/40">
+                            <div className="flex items-center gap-2 text-[10px] tracking-widest text-white/40">
                               {t.textureDensity}
                             </div>
                             <div className="h-[220px] w-full">
@@ -1654,21 +1664,21 @@ export default function App() {
 
                         <div className="grid grid-cols-2 gap-3">
                           <div className="bg-white/5 p-3 rounded-xl border border-white/10 flex flex-col gap-1">
-                            <div className="flex items-center gap-1.5 text-[7px] font-bold uppercase tracking-widest text-white/40">
+                            <div className="flex items-center gap-1.5 text-[7px] tracking-widest text-white/40">
                               {t.temp}
                             </div>
-                            <span className="text-[10px] font-bold text-white uppercase">{result.insight.tone_manner.temperature}</span>
+                            <span className="text-[10px] text-white">{result.insight.tone_manner.temperature}</span>
                           </div>
                           <div className="bg-white/5 p-3 rounded-xl border border-white/10 flex flex-col gap-1">
-                            <div className="flex items-center gap-1.5 text-[7px] font-bold uppercase tracking-widest text-white/40">
+                            <div className="flex items-center gap-1.5 text-[7px] tracking-widest text-white/40">
                               {t.dyn}
                             </div>
-                            <span className="text-[10px] font-bold text-white uppercase">{result.insight.tone_manner.dynamism}</span>
+                            <span className="text-[10px] text-white">{result.insight.tone_manner.dynamism}</span>
                           </div>
                         </div>
 
                         <div className="bg-white/5 p-5 rounded-2xl border border-white/10 space-y-2">
-                          <div className="flex items-center gap-1.5 text-[8px] font-sans font-semibold uppercase tracking-widest text-white/60">
+                          <div className="flex items-center gap-1.5 text-[8px] font-sans tracking-widest text-white/60">
                             {t.designIntent}
                           </div>
                           <p className="text-[10px] text-white/80 leading-relaxed italic">
@@ -1691,7 +1701,7 @@ export default function App() {
                             {generatingImage ? (
                               <div className="flex flex-col items-center gap-4 text-center">
                                 <RefreshCw className="w-8 h-8 text-white animate-spin" />
-                                <span className="text-[10px] uppercase tracking-[0.3em] text-white/40 font-bold">
+                                <span className="text-[10px] tracking-[0.3em] text-white/40">
                                   {t.forging}
                                 </span>
                               </div>
@@ -1730,7 +1740,7 @@ export default function App() {
                                   <ImageIcon className="w-6 h-6 text-white/20" />
                                 </div>
                                 <div className="space-y-1">
-                                  <p className="text-[11px] font-bold text-white/60 uppercase tracking-widest">{lang === 'ko' ? '이미지 생성 불가' : 'Image Generation Unavailable'}</p>
+                                  <p className="text-[11px] text-white/60 tracking-widest">{lang === 'ko' ? '이미지 생성 불가' : 'Image Generation Unavailable'}</p>
                                   <p className="text-[10px] text-white/40 leading-relaxed max-w-[240px]">{imageError}</p>
                                 </div>
                               </div>
@@ -1751,7 +1761,7 @@ export default function App() {
                             <div className="flex items-center justify-between mb-4">
                               <div className="flex items-center gap-2.5">
                                 <Cloud className="text-white w-3.5 h-3.5" />
-                                <span className="text-[9px] font-sans font-bold uppercase tracking-[0.2em] text-white">Midjourney (v6.0)</span>
+                                <span className="text-[9px] font-sans tracking-[0.2em] text-white">Midjourney (v6.0)</span>
                               </div>
                               <button 
                                 onClick={() => handleCopy(result.midjourney, 'mj')}
@@ -1770,7 +1780,7 @@ export default function App() {
                             <div className="flex items-center justify-between mb-4">
                               <div className="flex items-center gap-2.5">
                                 <Sparkles className="text-white w-3.5 h-3.5" />
-                                <span className="text-[9px] font-sans font-bold uppercase tracking-[0.2em] text-white">DALL-E 3</span>
+                                <span className="text-[9px] font-sans tracking-[0.2em] text-white">DALL-E 3</span>
                               </div>
                               <button 
                                 onClick={() => handleCopy(result.dalle, 'dalle')}
@@ -1789,7 +1799,7 @@ export default function App() {
                             <div className="flex items-center justify-between mb-4">
                               <div className="flex items-center gap-2.5">
                                 <Zap className="text-white w-3.5 h-3.5" />
-                                <span className="text-[9px] font-sans font-bold uppercase tracking-[0.2em] text-white">Stable Diffusion (SDXL)</span>
+                                <span className="text-[9px] font-sans tracking-[0.2em] text-white">Stable Diffusion (SDXL)</span>
                               </div>
                               <button 
                                 onClick={() => handleCopy(result.stableDiffusion, 'sd')}
@@ -1825,10 +1835,10 @@ export default function App() {
                       <Users className="w-6 h-6 text-[#0071e3]" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-black text-white tracking-tight">
+                      <h4 className="text-sm font-bold text-white tracking-tight">
                         {lang === 'ko' ? '공동 HISTORY 작업실' : 'Shared TEAM Workspace'}
                       </h4>
-                      <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">
+                      <p className="text-[10px] text-white/40 tracking-widest">
                         {lang === 'ko' ? '팀원들과 실시간으로 기록을 공유하고 있습니다' : 'Sharing history with team members in real-time'}
                       </p>
                     </div>
@@ -1849,7 +1859,7 @@ export default function App() {
               {history.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-32 text-white/20 space-y-4">
                   <Clock className="w-16 h-16" />
-                  <p className="text-sm font-bold tracking-widest uppercase">
+                  <p className="text-sm tracking-widest">
                     {lang === 'ko' ? '아직 생성된 기록이 없습니다' : 'No history yet'}
                   </p>
                 </div>
@@ -1864,7 +1874,7 @@ export default function App() {
                         {/* Summary Header */}
                         <div className="flex flex-wrap items-center justify-between gap-4">
                           <div className="flex items-center gap-4">
-                            <span className="px-3 py-1 rounded-lg bg-white/10 text-[10px] font-black text-white/60 tracking-widest">
+                            <span className="px-3 py-1 rounded-lg bg-white/10 text-[10px] text-white/60 tracking-widest">
                               {log.id}
                             </span>
                             <div className="flex flex-col">
@@ -1878,7 +1888,7 @@ export default function App() {
                               </div>
                               <div className="flex flex-wrap gap-2 mt-1">
                                 {log.options.slice(0, 3).map((opt, i) => (
-                                  <span key={i} className="text-[9px] text-white/30 uppercase tracking-tighter">
+                                  <span key={i} className="text-[9px] text-white/30 tracking-tighter">
                                     {opt}{i < Math.min(log.options.length, 3) - 1 ? ' /' : ''}
                                   </span>
                                 ))}
@@ -1927,7 +1937,7 @@ export default function App() {
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                   {Object.entries(log.insights.visual_balance).map(([key, val]) => (
                                     <div key={key} className="p-3 rounded-2xl bg-white/5 border border-white/5">
-                                      <div className="text-[8px] uppercase tracking-widest text-white/40 mb-1">{key}</div>
+                                      <div className="text-[8px] tracking-widest text-white/40 mb-1">{key}</div>
                                       <div className="text-sm font-bold text-white">{val}%</div>
                                     </div>
                                   ))}
@@ -1936,7 +1946,7 @@ export default function App() {
                                 {/* Prompt */}
                                 <div className="p-6 rounded-2xl bg-black/40 border border-white/5">
                                   <div className="flex items-center justify-between mb-3">
-                                    <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">PROMPT LOG</span>
+                                    <span className="text-[9px] text-white/40 tracking-widest">Prompt Log</span>
                                   </div>
                                   <p className="text-xs leading-relaxed text-white/80 font-mono italic">
                                     {log.prompt}
@@ -1960,16 +1970,16 @@ export default function App() {
               className="w-full max-w-6xl mx-auto space-y-12"
             >
               <div className="text-center space-y-4 mb-12">
-                <h2 className="text-4xl font-black text-white tracking-tighter">
+                <h2 className="text-4xl font-bold text-white tracking-tighter">
                   {lang === 'ko' ? '당신에게 맞는 요금제를 선택하세요' : 'Choose the plan that fits you'}
                 </h2>
-                <p className="text-white/40 text-sm tracking-widest uppercase font-bold">
+                <p className="text-white/40 text-sm tracking-widest">
                   {lang === 'ko' ? '더 강력한 기능으로 창의력을 발휘하세요' : 'Unleash your creativity with more power'}
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {['FREE', 'PRO', 'TEAM'].map((tier) => (
+                {['Free', 'Pro', 'Team'].map((tier) => (
                   <div 
                     key={tier}
                     className={`relative p-8 rounded-[2.5rem] backdrop-blur-3xl border transition-all duration-500 ${
@@ -1980,10 +1990,10 @@ export default function App() {
                   >
                     <div className="flex flex-col h-full space-y-6">
                       <div className="space-y-2">
-                        <h3 className="text-2xl font-black text-white tracking-tight">{tier}</h3>
+                        <h3 className="text-2xl font-bold text-white tracking-tight">{tier}</h3>
                         <div className="flex items-baseline gap-1">
-                          <span className="text-3xl font-black text-white">{t.pricing[tier.toLowerCase() as keyof typeof t.pricing].price}</span>
-                          <span className="text-white/40 text-[10px] font-bold uppercase tracking-widest">/ month</span>
+                          <span className="text-3xl font-bold text-white">{t.pricing[tier.toLowerCase() as keyof typeof t.pricing].price}</span>
+                          <span className="text-white/40 text-[10px] tracking-widest">/ month</span>
                         </div>
                       </div>
 
@@ -2009,11 +2019,11 @@ export default function App() {
                           }
                         }}
                         disabled={userTier === tier}
-                        className={`w-full mt-auto py-4 rounded-2xl text-[11px] font-black tracking-[0.2em] uppercase transition-all ${
+                        className={`w-full mt-auto py-4 rounded-2xl text-[11px] tracking-[0.2em] transition-all ${
                           userTier === tier
                             ? 'bg-white/5 border border-white/10 text-white/20 cursor-default'
-                            : (tier === 'PRO' || tier === 'TEAM')
-                              ? 'bg-white text-black hover:scale-[1.02] active:scale-[0.98]'
+                            : (tier === 'Pro' || tier === 'Team')
+                              ? 'bg-white text-black font-bold hover:scale-[1.02] active:scale-[0.98]'
                               : 'bg-white/10 text-white hover:bg-white/20 hover:scale-[1.02] active:scale-[0.98]'
                         }`}
                       >
@@ -2036,14 +2046,14 @@ export default function App() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div className="flex items-center gap-3">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/80">
-                SYSTEM READY // <span className="text-white">ⓒ 2026 AI IMAGIGEN</span>
+              <p className="text-[10px] tracking-[0.2em] text-white/80">
+                System Ready // <span className="text-white">ⓒ 2026 AI ImagiGen</span>
               </p>
             </div>
 
             <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
               <Zap className="w-3 h-3 text-amber-400" />
-              <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/60">
+              <span className="text-[9px] tracking-[0.2em] text-white/60">
                 Powered by Gemini 2.5 Flash ({userTier} Tier)
               </span>
             </div>
@@ -2072,7 +2082,7 @@ export default function App() {
                 </div>
                 
                 <div className="space-y-4">
-                  <h3 className="text-3xl font-black text-white tracking-tighter uppercase">
+                  <h3 className="text-3xl font-bold text-white tracking-tighter">
                     {upgradeReason === 'limit' ? t.upgrade.limitReached : t.upgrade.proOnly}
                   </h3>
                   <p className="text-white/60 text-sm leading-relaxed">
@@ -2086,15 +2096,15 @@ export default function App() {
                       setShowUpgradeModal(false);
                       setActiveTab('UPGRADE');
                     }}
-                    className="w-full py-5 rounded-2xl bg-white text-black text-[11px] font-black tracking-[0.2em] uppercase hover:scale-[1.02] active:scale-[0.98] transition-all"
+                    className="w-full py-5 rounded-2xl bg-white text-black text-[11px] font-bold tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all"
                   >
                     {t.upgrade.upgradeBtn}
                   </button>
                   <button
                     onClick={() => setShowUpgradeModal(false)}
-                    className="w-full py-5 rounded-2xl bg-white/5 text-white/40 text-[11px] font-black tracking-[0.2em] uppercase hover:text-white transition-all"
+                    className="w-full py-5 rounded-2xl bg-white/5 text-white/40 text-[11px] tracking-[0.2em] hover:text-white transition-all"
                   >
-                    {lang === 'ko' ? '나중에 하기' : 'MAYBE LATER'}
+                    {lang === 'ko' ? '나중에 하기' : 'Maybe Later'}
                   </button>
                 </div>
               </div>
@@ -2125,7 +2135,7 @@ export default function App() {
               }}
             >
               <div className="flex items-center justify-between mb-5">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-white/90">
+                <span className="text-[10px] tracking-widest text-white/90">
                   Custom {activePickerType === 'bg' ? 'Background' : 'Object'} Color
                 </span>
                 <button 
@@ -2162,8 +2172,8 @@ export default function App() {
                   style={{ backgroundColor: customColor }}
                 />
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-tight">Hex Code</span>
-                  <span className="text-[13px] font-mono text-white uppercase tracking-wider leading-none">{customColor}</span>
+                  <span className="text-[10px] text-white/40 tracking-tight">Hex Code</span>
+                  <span className="text-[13px] font-mono text-white tracking-wider leading-none">{customColor}</span>
                 </div>
               </div>
             </motion.div>
