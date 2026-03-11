@@ -153,6 +153,28 @@ export default function App() {
   const [history, setHistory] = useState<HistoryLog[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const [restoreMessage, setRestoreMessage] = useState<string | null>(null);
+  const [bgImage, setBgImage] = useState('');
+
+  useEffect(() => {
+    const getNextImageUrl = () => `https://picsum.photos/3840/2160?grayscale&random=${Math.random()}`;
+    
+    // Set initial image
+    setBgImage(getNextImageUrl());
+
+    // Interval for automatic rotation every 15 seconds
+    const interval = setInterval(() => {
+      const nextUrl = getNextImageUrl();
+      
+      // Preloading logic to prevent flickering
+      const img = new Image();
+      img.src = nextUrl;
+      img.onload = () => {
+        setBgImage(nextUrl);
+      };
+    }, 7000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const [userTier, setUserTier] = useState<'FREE' | 'PRO' | 'TEAM'>('FREE');
   const [generationCount, setGenerationCount] = useState(0);
@@ -496,6 +518,17 @@ export default function App() {
       }
     }
   }[lang];
+
+  // Auto-expand textarea
+  useEffect(() => {
+    const el = inputRef.current;
+    if (el) {
+      el.style.height = 'auto';
+      const scrollHeight = el.scrollHeight;
+      // Ensure it doesn't go below our new substantial minimum height
+      el.style.height = `${Math.max(80, scrollHeight)}px`;
+    }
+  }, [idea]);
 
   const [isDesigning, setIsDesigning] = useState(false);
   const prevSelectedOptionsRef = useRef<StyleOption[]>([]);
@@ -1017,26 +1050,37 @@ export default function App() {
     <div className="relative min-h-screen flex flex-col items-center">
       {/* Background Container */}
       <div className="fixed inset-0 -z-10 overflow-hidden bg-[#020205]">
-        <motion.div 
-          initial={{ opacity: 0, scale: 1.1 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1.5 }}
-          className="absolute inset-0 bg-no-repeat bg-cover bg-right-top md:bg-right"
-          style={{
-            backgroundImage: `url('https://raw.githubusercontent.com/primobeat/prompt-creator/main/u6997844369_A_hyper-realistic_profile_view_of_a_cyberpunk_wom_5915a2c6-0c39-48d5-a497-c36672a0e063_1.png')`,
-            backgroundAttachment: 'fixed'
-          }}
-        />
+        <AnimatePresence>
+          {bgImage && (
+            <motion.div 
+              key={bgImage}
+              initial={{ opacity: 0, scale: 1 }}
+              animate={{ opacity: 1, scale: 1.15 }}
+              exit={{ 
+                opacity: 0, 
+                scale: 1.15,
+                transition: { 
+                  opacity: { duration: 3, ease: "easeInOut" },
+                  scale: { duration: 3, ease: "linear" }
+                }
+              }}
+              transition={{ 
+                opacity: { duration: 3, ease: "easeInOut" },
+                scale: { duration: 13, ease: "linear" }
+              }}
+              className="absolute inset-0 bg-no-repeat bg-cover bg-center"
+              style={{
+                backgroundImage: `url('${bgImage}')`,
+              }}
+            />
+          )}
+        </AnimatePresence>
 
-        {/* Subtle Purple-Blue Gradient Overlay for readability and mood */}
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-950/60 via-slate-950/40 to-transparent" />
+        {/* Dark Overlay for visibility and contrast */}
+        <div className="absolute inset-0 bg-black/50" />
         
         {/* Subtle Grain Texture */}
-        <div className="absolute inset-0 opacity-[0.05] mix-blend-overlay pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
-        
-        {/* Intense Glowing Accents (Subtle) */}
-        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-indigo-500/10 blur-[160px] rounded-full animate-pulse-slow" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-blue-500/10 blur-[160px] rounded-full animate-pulse-slow" />
+        <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
       </div>
 
       <div className="relative z-10 w-full flex flex-col items-center p-6 md:p-12 min-h-screen">
@@ -1150,11 +1194,12 @@ export default function App() {
               <div className="relative group">
                 <textarea
                   ref={inputRef}
+                  rows={1}
                   value={idea}
                   onChange={(e) => setIdea(e.target.value)}
                   onFocus={() => setIsEditing(true)}
                   placeholder={t.placeholder}
-                  className="w-full h-20 p-6 rounded-full bg-white/5 backdrop-blur-2xl border border-white/20 focus:border-white/40 focus:bg-white/10 outline-none transition-all text-lg placeholder:text-white/20 resize-none text-white text-center shadow-2xl"
+                  className="w-full min-h-[80px] px-10 py-7 rounded-[2.5rem] bg-white/5 backdrop-blur-2xl border border-white/20 focus:border-white/40 focus:bg-white/10 outline-none text-lg placeholder:text-white/20 resize-none text-white text-center shadow-2xl overflow-hidden transition-[border-color,background-color] duration-200"
                 />
               </div>
             </motion.div>
@@ -1947,10 +1992,10 @@ export default function App() {
                       <ul className="space-y-4">
                         {t.pricing[tier.toLowerCase() as keyof typeof t.pricing].features.map((feature: string, i: number) => (
                           <li key={i} className="flex items-start gap-3">
-                            <div className="mt-1 p-0.5 rounded-full bg-[#0071e3]/20">
-                              <Check className="w-3 h-3 text-[#0071e3]" />
+                            <div className="mt-1 p-1 rounded-full bg-[#0071e3] shadow-[0_0_15px_rgba(0,113,227,0.4)] flex-shrink-0">
+                              <Check className="w-2.5 h-2.5 text-white stroke-[3.5]" />
                             </div>
-                            <span className="text-xs text-white/70 leading-relaxed font-medium">{feature}</span>
+                            <span className="text-xs text-white/90 leading-relaxed font-medium">{feature}</span>
                           </li>
                         ))}
                       </ul>
@@ -1989,35 +2034,11 @@ export default function App() {
           <div className="h-px bg-white/10 w-full" />
           
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-emerald-500/80">
-                  System Operational
-                </span>
-              </div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-white">
-                &copy; 2024 AI ImagiGen
+            <div className="flex items-center gap-3">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/80">
+                SYSTEM READY // <span className="text-white">ⓒ 2026 AI IMAGIGEN</span>
               </p>
-            </div>
-
-            <div className="flex flex-wrap gap-x-8 gap-y-4">
-              {[
-                { label: 'Documentation', icon: Info },
-                { label: 'API Reference', icon: Activity },
-                { label: 'Community', icon: Sparkles }
-              ].map((link) => (
-                <a 
-                  key={link.label}
-                  href="#" 
-                  className="flex items-center gap-2 group transition-colors"
-                >
-                  <link.icon className="w-3 h-3 text-white/20 group-hover:text-white/60 transition-colors" />
-                  <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/40 group-hover:text-white transition-colors">
-                    {link.label}
-                  </span>
-                </a>
-              ))}
             </div>
 
             <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
