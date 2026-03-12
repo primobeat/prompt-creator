@@ -116,9 +116,7 @@ export type StyleOption =
 export interface ImageAnalysis {
   camera: string;
   ratio: string;
-  artStyle: StyleOption;
-  texture: StyleOption;
-  lighting: StyleOption;
+  selectedOptions: StyleOption[];
   bgColors: string[];
   objColors: string[];
 }
@@ -222,18 +220,36 @@ export async function analyzeImage(image: string): Promise<ImageAnalysis> {
   const mime = mimeType.match(/:(.*?);/)?.[1] || 'image/png';
 
   const systemInstruction = `
-너는 이미지 분석 전문가야. 제공된 이미지를 분석하여 다음 카테고리에 가장 잘 어울리는 값을 추출해줘.
+너는 이미지 분석 전문가야. 제공된 이미지를 분석하여 다음 카테고리별로 가장 잘 어울리는 값을 추출해줘.
+이미지의 느낌을 최대한 재현할 수 있도록 모든 카테고리에서 적절한 값을 선택해야 해.
 
 [Categories & Allowed Values]
-1. camera: High Angle, Eye Level, Low Angle, Top View
+1. camera: High Angle, Eye Level, Low Angle, Top View, Isometric
 2. ratio: 1:1, 4:5, 16:9, 9:16, 3:2, 2:3
-3. artStyle: 2D Artwork, 3D Rendering, Real Photo, Icon
-4. texture: Matte, Glass, Metal, Clay, Halftone, Noise, Paper Texture, Flat Color, Soft Volume, Inflatable, Geometric Abstract, Transparent Glass, Reflective Metal, Matte Clay, Paper, Emissive, Out of Focus (f/1.8), Pan Focus (f/11), Fisheye Lens, Macro, Film Grain, Line, Solid, Realism, 3D Clay, Glass, Isometric, Hand-drawn
-5. lighting: Natural Light, Studio, Cinematic Neon, Mist, Solid, Gradient, Textured Paper, Abstract Shapes, Transparent Background, Infinity Wall, Levitation, Minimal Room, Soft White, Dark Mood, Golden Hour, Blue Hour, Panorama, Long Exposure, Soft Shadow, None, Circle, Square, Organic Curve
-6. bgColors: Array of Hex color codes (e.g., ["#FFFFFF", "#000000"])
-7. objColors: Array of Hex color codes (e.g., ["#FF0000", "#00FF00"])
+3. concept: Minimalist, Geometric, Detailism (이미지의 전반적인 분위기에 따라 선택)
+4. dimension: 2D Artwork, 3D Rendering, Real Photo, Icon (이미지의 형식을 선택)
+5. subStyle: 
+   - 2D일 때: Vector, Line Art, Gouache, Pixel Art
+   - 3D일 때: Soft Volume, Inflatable, Geometric Abstract, Wireframe
+   - Photo일 때: Out of Focus (f/1.8), Pan Focus (f/11), Fisheye Lens, Macro, Film Grain
+   - Icon일 때: Line, Solid, Realism, 3D Clay, Glass, Hand-drawn
+6. finish:
+   - 2D일 때: Halftone, Noise, Paper Texture, Flat Color
+   - 3D일 때: Matte Clay, Transparent Glass, Reflective Metal, Paper, Emissive
+   - Photo일 때: Close-up, Medium Shot, Full Shot, Panorama, Long Exposure
+   - Icon일 때: Gradient, Halftone, Noise, Soft Shadow
+7. environment:
+   - 2D일 때: Solid, Gradient, Textured Paper, Abstract Shapes, Transparent Background
+   - 3D일 때: Studio, Infinity Wall, Levitation, Minimal Room, Natural Light, Cinematic Neon, Soft White, Dark Mood
+   - Photo일 때: Golden Hour, Blue Hour, Cinematic Neon, Natural Light, Dark Mood
+   - Icon일 때: None, Circle, Square, Organic Curve
 
-반드시 JSON 형식으로 응답할 것.
+8. bgColors: Array of Hex color codes (e.g., ["#FFFFFF", "#000000"])
+9. objColors: Array of Hex color codes (e.g., ["#FF0000", "#00FF00"])
+
+[Output Rules]
+- selectedOptions 배열에는 concept, dimension, subStyle, finish, environment에서 선택한 모든 StyleOption 값들을 담아줘.
+- 반드시 JSON 형식으로 응답할 것.
 `;
 
   const response = await ai.models.generateContent({
@@ -246,7 +262,7 @@ export async function analyzeImage(image: string): Promise<ImageAnalysis> {
             mimeType: mime
           }
         },
-        { text: "이 이미지의 스타일 설정을 분석해줘." }
+        { text: "이 이미지의 스타일 설정을 최대한 상세하게 분석해서 JSON으로 출력해줘." }
       ]
     },
     config: {
@@ -257,9 +273,10 @@ export async function analyzeImage(image: string): Promise<ImageAnalysis> {
         properties: {
           camera: { type: Type.STRING },
           ratio: { type: Type.STRING },
-          artStyle: { type: Type.STRING },
-          texture: { type: Type.STRING },
-          lighting: { type: Type.STRING },
+          selectedOptions: { 
+            type: Type.ARRAY,
+            items: { type: Type.STRING }
+          },
           bgColors: { 
             type: Type.ARRAY,
             items: { type: Type.STRING }
@@ -269,7 +286,7 @@ export async function analyzeImage(image: string): Promise<ImageAnalysis> {
             items: { type: Type.STRING }
           },
         },
-        required: ["camera", "ratio", "artStyle", "texture", "lighting", "bgColors", "objColors"],
+        required: ["camera", "ratio", "selectedOptions", "bgColors", "objColors"],
       }
     }
   });

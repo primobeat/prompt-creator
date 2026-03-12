@@ -28,7 +28,12 @@ interface HistoryLog {
   visualStyle: string;
   subject: string;
   options: StyleOption[];
-  prompt: string;
+  prompts: {
+    midjourney: string;
+    dalle: string;
+    stableDiffusion: string;
+  };
+  generatedImage: string | null;
   insights: InsightType;
   camera: string;
   ratio: string;
@@ -69,13 +74,13 @@ const CustomDropdown = ({
     <div className="space-y-2 relative" ref={dropdownRef}>
       <div className="flex items-center gap-1.5 ml-1">
         {Icon && <Icon className="w-3 h-3 text-white" />}
-        <label className="text-[10px] font-sans tracking-[0.2em] text-white">
+        <label className="text-[10px] font-sans font-light tracking-[0.2em] text-white">
           {label}
         </label>
       </div>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-[11px] font-normal text-white flex items-center justify-between hover:bg-white/10 transition-all outline-none"
+        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-[11px] font-light text-white flex items-center justify-between hover:bg-white/10 transition-all outline-none"
       >
         {value}
         <motion.div animate={{ rotate: isOpen ? 180 : 0 }}>
@@ -98,7 +103,7 @@ const CustomDropdown = ({
                   onChange(opt);
                   setIsOpen(false);
                 }}
-                className={`w-full px-4 py-2.5 rounded-xl text-[11px] font-normal text-left transition-all ${
+                className={`w-full px-4 py-2.5 rounded-xl text-[11px] font-light text-left transition-all ${
                   value === (displayOptions ? displayOptions[idx] : opt)
                     ? 'bg-white text-black' 
                     : 'text-white/60 hover:bg-white/5 hover:text-white'
@@ -138,6 +143,7 @@ export default function App() {
   const objectButtonRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [pickerPosition, setPickerPosition] = useState({ bottom: 0, right: 0 });
   const [loading, setLoading] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
@@ -335,7 +341,7 @@ export default function App() {
         'Top View': 'Top View',
         'Isometric': 'Isometric'
       },
-      forging: "Generating image...",
+      forging: "Generating image and prompt...",
       upgrade: "Upgrade",
       proOnly: "Pro Exclusive",
       proOnlyDesc: "This feature is only available for Pro users.",
@@ -499,7 +505,7 @@ export default function App() {
         'Top View': '톱 뷰',
         'Isometric': '아이소메트릭'
       },
-      forging: "이미지 생성 중...",
+      forging: "이미지와 프롬프트 생성 중...",
       upgrade: "업그레이드",
       proOnly: "Pro 전용 기능",
       proOnlyDesc: "이 기능은 Pro 요금제에서만 사용 가능합니다.",
@@ -825,6 +831,7 @@ export default function App() {
       reader.onloadend = async () => {
         const base64 = reader.result as string;
         setReferenceImage(base64);
+        setIsEditing(true);
         
         // Auto-analyze
         setAnalyzing(true);
@@ -848,14 +855,10 @@ export default function App() {
             if (customBg) setCustomColor(customBg);
             else if (customObj) setCustomColor(customObj);
             
-            // Set selected options (Art Style, Texture, Lighting)
-            const newOptions: StyleOption[] = [];
-            [analysis.artStyle, analysis.texture, analysis.lighting].forEach(opt => {
-              if (opt && !newOptions.includes(opt)) {
-                newOptions.push(opt);
-              }
-            });
-            setSelectedOptions(newOptions);
+            // Set selected options from expanded analysis
+            if (analysis.selectedOptions && Array.from(analysis.selectedOptions).length > 0) {
+              setSelectedOptions(analysis.selectedOptions);
+            }
           }
         } catch (error) {
           console.error("Image analysis failed", error);
@@ -941,7 +944,7 @@ export default function App() {
       })
       .finally(() => setGeneratingImage(false));
 
-      const [promptRes] = await Promise.all([promptPromise, imagePromise]);
+      const [promptRes, imageUrl] = await Promise.all([promptPromise, imagePromise]);
 
       // Save to history if prompt generation was successful
       if (promptRes) {
@@ -952,7 +955,12 @@ export default function App() {
           visualStyle: selectedDimension || 'None',
           subject: idea,
           options: [...activeOptions],
-          prompt: promptRes.midjourney,
+          prompts: {
+            midjourney: promptRes.midjourney,
+            dalle: promptRes.dalle,
+            stableDiffusion: promptRes.stableDiffusion
+          },
+          generatedImage: imageUrl,
           insights: promptRes.insight,
           camera: selectedCamera,
           ratio: selectedRatio,
@@ -984,10 +992,13 @@ export default function App() {
     setSelectedRatio(log.ratio);
     setReferenceImage(log.referenceImage);
     setResult({
-      prompt: log.prompt,
+      midjourney: log.prompts.midjourney,
+      dalle: log.prompts.dalle,
+      stableDiffusion: log.prompts.stableDiffusion,
+      designIntent: '', // Not strictly needed for restoration
       insight: log.insights
     });
-    setGeneratedImage(null); // Reset image as it's a new session
+    setGeneratedImage(log.generatedImage); 
     setActiveTab('CREATE');
     setRestoreMessage(lang === 'ko' ? '이전 설정을 불러왔습니다' : 'Previous settings restored');
     setTimeout(() => setRestoreMessage(null), 3000);
@@ -1122,7 +1133,7 @@ export default function App() {
 
           <h1 
             onClick={resetApp}
-            className="text-3xl md:text-5xl font-display font-bold tracking-tight text-white mb-3 cursor-pointer hover:opacity-80 transition-opacity"
+            className="text-3xl md:text-5xl font-display font-semibold tracking-tight text-white mb-3 cursor-pointer hover:opacity-80 transition-opacity"
           >
             AI ImagiGen
           </h1>
@@ -1134,7 +1145,7 @@ export default function App() {
           <div className="flex items-center justify-center gap-12 mx-auto">
             <button
               onClick={() => setActiveTab('CREATE')}
-              className={`relative py-2 text-[11px] tracking-[0.3em] transition-all ${activeTab === 'CREATE' ? 'text-white font-bold' : 'text-white/30 hover:text-white/60'}`}
+              className={`relative py-2 text-[11px] tracking-[0.3em] transition-all ${activeTab === 'CREATE' ? 'text-white font-medium' : 'text-white/30 hover:text-white/60'}`}
             >
               CREATE
               {activeTab === 'CREATE' && (
@@ -1147,7 +1158,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab('HISTORY')}
-              className={`relative py-2 text-[11px] tracking-[0.3em] transition-all ${activeTab === 'HISTORY' ? 'text-white font-bold' : 'text-white/30 hover:text-white/60'}`}
+              className={`relative py-2 text-[11px] tracking-[0.3em] transition-all ${activeTab === 'HISTORY' ? 'text-white font-medium' : 'text-white/30 hover:text-white/60'}`}
             >
               HISTORY
               {activeTab === 'HISTORY' && (
@@ -1160,7 +1171,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab('UPGRADE')}
-              className={`relative py-2 text-[11px] tracking-[0.3em] transition-all flex items-center gap-2 ${activeTab === 'UPGRADE' ? 'text-white font-bold' : 'text-white/30 hover:text-white/60'}`}
+              className={`relative py-2 text-[11px] tracking-[0.3em] transition-all flex items-center gap-2 ${activeTab === 'UPGRADE' ? 'text-white font-medium' : 'text-white/30 hover:text-white/60'}`}
             >
               UPGRADE
               <span className="px-1.5 py-0.5 rounded-md bg-[#0071e3] text-[8px] text-white font-bold tracking-normal">Pro</span>
@@ -1209,8 +1220,49 @@ export default function App() {
                   onChange={(e) => setIdea(e.target.value)}
                   onFocus={() => setIsEditing(true)}
                   placeholder={t.placeholder}
-                  className="w-full min-h-[80px] px-10 py-7 rounded-[2.5rem] bg-white/5 backdrop-blur-2xl border border-white/20 focus:border-white/40 focus:bg-white/10 outline-none text-lg placeholder:text-white/20 resize-none text-white text-center shadow-2xl overflow-hidden transition-[border-color,background-color] duration-200"
+                  className="w-full min-h-[80px] px-20 py-7 rounded-[2.5rem] bg-white/5 backdrop-blur-2xl border border-white/20 focus:border-white/40 focus:bg-white/10 outline-none text-lg placeholder:text-white/20 resize-none text-white text-center shadow-2xl overflow-hidden transition-[border-color,background-color] duration-200"
                 />
+                
+                {/* Reference Image Icon Button */}
+                <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center">
+                  {referenceImage ? (
+                    <div className="relative group/ref">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden">
+                        <img src={referenceImage} className="w-full h-full object-cover" alt="Reference" />
+                        {analyzing && (
+                          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center">
+                            <RefreshCw className="w-4 h-4 text-white animate-spin" />
+                          </div>
+                        )}
+                      </div>
+                      <button 
+                        onClick={handleRemoveImage}
+                        className="absolute -top-2 -right-2 p-1 rounded-full bg-black/80 border border-white/20 text-white opacity-0 group-hover/ref:opacity-100 transition-opacity shadow-xl"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-2 text-white/40 hover:text-white transition-all flex items-center justify-center"
+                      title={t.refImage}
+                    >
+                      {analyzing ? (
+                        <RefreshCw className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <ImageIcon className="w-5 h-5" />
+                      )}
+                    </button>
+                  )}
+                  <input 
+                    ref={fileInputRef}
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </div>
               </div>
             </motion.div>
 
@@ -1245,7 +1297,7 @@ export default function App() {
                             <div key={category.key} className="space-y-4">
                               <div className="flex items-center gap-2 ml-1">
                                 <CategoryIcon className="w-4 h-4 text-white" />
-                                <span className="text-[11px] font-sans tracking-[0.2em] text-white">
+                                <span className="text-[11px] font-sans font-light tracking-[0.2em] text-white">
                                   {t[category.key as keyof typeof t] as string}
                                 </span>
                               </div>
@@ -1257,7 +1309,7 @@ export default function App() {
                                     <button
                                       key={opt.label}
                                       onClick={() => toggleOption(opt.label)}
-                                      className={`flex items-center gap-3 px-5 py-4 rounded-2xl text-xs transition-all border ${
+                                      className={`flex items-center gap-3 px-5 py-4 rounded-2xl text-xs font-light transition-all border ${
                                         isSelected 
                                           ? 'bg-white border-white text-black shadow-[0_10px_30px_rgba(255,255,255,0.2)]' 
                                           : 'bg-white/5 border-white/5 text-white hover:border-white/20'
@@ -1304,7 +1356,7 @@ export default function App() {
                                   <div key={category.key} className="space-y-4">
                                     <div className="flex items-center gap-2 ml-1">
                                       <CategoryIcon className="w-3.5 h-3.5 text-white/60" />
-                                      <span className="text-[10px] font-sans tracking-[0.2em] text-white/60">
+                                      <span className="text-[10px] font-sans font-light tracking-[0.2em] text-white/60">
                                         {t[category.key as keyof typeof t] as string}
                                       </span>
                                     </div>
@@ -1316,7 +1368,7 @@ export default function App() {
                                           <button
                                             key={opt.label}
                                             onClick={() => toggleOption(opt.label)}
-                                            className={`flex items-center gap-2.5 px-4 py-3.5 rounded-xl text-[11px] transition-all border ${
+                                            className={`flex items-center gap-2.5 px-4 py-3.5 rounded-xl text-[11px] font-light transition-all border ${
                                               isSelected 
                                                 ? 'bg-white border-white text-black shadow-[0_5px_15px_rgba(255,255,255,0.15)]' 
                                                 : 'bg-white/5 border-white/5 text-white hover:border-white/20'
@@ -1343,7 +1395,7 @@ export default function App() {
                                 <div className="space-y-3">
                                   <div className="flex items-center gap-1.5 ml-1">
                                     <Droplets className="w-3 h-3 text-white" />
-                                    <span className="text-[10px] font-sans tracking-[0.2em] text-white">
+                                    <span className="text-[10px] font-sans font-light tracking-[0.2em] text-white">
                                       {t.bgColor}
                                     </span>
                                   </div>
@@ -1412,7 +1464,7 @@ export default function App() {
                                 <div className="space-y-3">
                                   <div className="flex items-center gap-1.5 ml-1">
                                     <Box className="w-3 h-3 text-white" />
-                                    <span className="text-[10px] font-sans tracking-[0.2em] text-white">
+                                    <span className="text-[10px] font-sans font-light tracking-[0.2em] text-white">
                                       {t.objColor}
                                     </span>
                                   </div>
@@ -1499,59 +1551,6 @@ export default function App() {
                                 onChange={setSelectedRatio} 
                                 icon={Maximize}
                               />
-                            </div>
-
-                            {/* Divider */}
-                            <div className="h-px bg-white/10 w-full" />
-
-                            {/* Group E: Reference Image */}
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-1.5 ml-1">
-                                <ImageIcon className="w-3 h-3 text-white" />
-                                <label className="text-[11px] font-sans tracking-[0.25em] text-white">
-                                  {t.refImage}
-                                </label>
-                              </div>
-                              <div 
-                                className={`relative group h-32 rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center gap-2 overflow-hidden ${
-                                  referenceImage ? 'border-white/40 bg-white/5' : 'border-white/20 hover:border-white/40 bg-white/[0.02]'
-                                }`}
-                              >
-                                {analyzing && (
-                                  <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
-                                    <RefreshCw className="w-6 h-6 text-white animate-spin" />
-                                    <span className="text-[10px] tracking-[0.2em] text-white animate-pulse">
-                                      {t.analyzing}
-                                    </span>
-                                  </div>
-                                )}
-                                {referenceImage ? (
-                                  <>
-                                    <img src={referenceImage} className="absolute inset-0 w-full h-full object-cover opacity-40" alt="Reference" />
-                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <button 
-                                        onClick={handleRemoveImage}
-                                        className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
-                                      >
-                                        <X className="w-5 h-5" />
-                                      </button>
-                                    </div>
-                                  </>
-                                ) : (
-                                  <>
-                                    <ImageIcon className="w-6 h-6 text-white/20 group-hover:text-white/40 transition-colors" />
-                                    <span className="text-[10px] tracking-widest text-white/30 group-hover:text-white/50 transition-colors px-4 text-center">
-                                      {t.uploadDesc}
-                                    </span>
-                                    <input 
-                                      type="file" 
-                                      accept="image/*" 
-                                      onChange={handleImageUpload}
-                                      className="absolute inset-0 opacity-0 cursor-pointer"
-                                    />
-                                  </>
-                                )}
-                              </div>
                             </div>
 
                             {/* Combined Generate Button */}
@@ -1667,13 +1666,13 @@ export default function App() {
                             <div className="flex items-center gap-1.5 text-[7px] tracking-widest text-white/40">
                               {t.temp}
                             </div>
-                            <span className="text-[10px] text-white">{result.insight.tone_manner.temperature}</span>
+                            <span className="text-[10px] font-light text-white">{result.insight.tone_manner.temperature}</span>
                           </div>
                           <div className="bg-white/5 p-3 rounded-xl border border-white/10 flex flex-col gap-1">
                             <div className="flex items-center gap-1.5 text-[7px] tracking-widest text-white/40">
                               {t.dyn}
                             </div>
-                            <span className="text-[10px] text-white">{result.insight.tone_manner.dynamism}</span>
+                            <span className="text-[10px] font-light text-white">{result.insight.tone_manner.dynamism}</span>
                           </div>
                         </div>
 
@@ -1681,7 +1680,7 @@ export default function App() {
                           <div className="flex items-center gap-1.5 text-[8px] font-sans tracking-widest text-white/60">
                             {t.designIntent}
                           </div>
-                          <p className="text-[10px] text-white/80 leading-relaxed italic">
+                          <p className="text-[10px] font-light text-white/80 leading-relaxed italic">
                             "{result.designIntent}"
                           </p>
                         </div>
@@ -1731,7 +1730,7 @@ export default function App() {
                                 </div>
 
                                 <div className="absolute inset-x-0 bottom-0 p-8 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <p className="text-white text-[10px] font-medium italic">"{idea}"</p>
+                                  <p className="text-white text-[10px] font-light italic">"{idea}"</p>
                                 </div>
                               </>
                             ) : imageError ? (
@@ -1757,7 +1756,7 @@ export default function App() {
                           className="space-y-4"
                         >
                           {/* Midjourney Prompt Card */}
-                          <div className="glass-card p-6 rounded-[2.5rem]">
+                          <div className="bg-white/5 backdrop-blur-3xl border border-white/10 shadow-2xl p-6 rounded-[2.5rem]">
                             <div className="flex items-center justify-between mb-4">
                               <div className="flex items-center gap-2.5">
                                 <Cloud className="text-white w-3.5 h-3.5" />
@@ -1770,13 +1769,13 @@ export default function App() {
                                 {copiedId === 'mj' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                               </button>
                             </div>
-                            <p className="text-[10px] font-mono bg-black/40 p-4 rounded-xl border border-white/10 leading-relaxed break-words text-white backdrop-blur-md">
+                            <p className="text-[10px] font-mono font-light bg-black/40 p-4 rounded-xl border border-white/10 leading-relaxed break-words text-white backdrop-blur-md">
                               {result.midjourney}
                             </p>
                           </div>
 
                           {/* DALL-E 3 Prompt Card */}
-                          <div className="glass-card p-6 rounded-[2.5rem]">
+                          <div className="bg-white/5 backdrop-blur-3xl border border-white/10 shadow-2xl p-6 rounded-[2.5rem]">
                             <div className="flex items-center justify-between mb-4">
                               <div className="flex items-center gap-2.5">
                                 <Sparkles className="text-white w-3.5 h-3.5" />
@@ -1789,13 +1788,13 @@ export default function App() {
                                 {copiedId === 'dalle' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                               </button>
                             </div>
-                            <p className="text-[10px] font-mono bg-black/40 p-4 rounded-xl border border-white/10 leading-relaxed break-words text-white backdrop-blur-md">
+                            <p className="text-[10px] font-mono font-light bg-black/40 p-4 rounded-xl border border-white/10 leading-relaxed break-words text-white backdrop-blur-md">
                               {result.dalle}
                             </p>
                           </div>
 
                           {/* Stable Diffusion Card */}
-                          <div className="glass-card p-6 rounded-[2.5rem]">
+                          <div className="bg-white/5 backdrop-blur-3xl border border-white/10 shadow-2xl p-6 rounded-[2.5rem]">
                             <div className="flex items-center justify-between mb-4">
                               <div className="flex items-center gap-2.5">
                                 <Zap className="text-white w-3.5 h-3.5" />
@@ -1808,7 +1807,7 @@ export default function App() {
                                 {copiedId === 'sd' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                               </button>
                             </div>
-                            <p className="text-[10px] font-mono bg-black/40 p-4 rounded-xl border border-white/10 leading-relaxed break-words text-white backdrop-blur-md">
+                            <p className="text-[10px] font-mono font-light bg-black/40 p-4 rounded-xl border border-white/10 leading-relaxed break-words text-white backdrop-blur-md">
                               {result.stableDiffusion}
                             </p>
                           </div>
@@ -1835,7 +1834,7 @@ export default function App() {
                       <Users className="w-6 h-6 text-[#0071e3]" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-white tracking-tight">
+                      <h4 className="text-sm font-medium text-white tracking-tight">
                         {lang === 'ko' ? '공동 HISTORY 작업실' : 'Shared TEAM Workspace'}
                       </h4>
                       <p className="text-[10px] text-white/40 tracking-widest">
@@ -1857,62 +1856,57 @@ export default function App() {
               )}
 
               {history.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-32 text-white/20 space-y-4">
-                  <Clock className="w-16 h-16" />
-                  <p className="text-sm tracking-widest">
+                <div className="flex flex-col items-center justify-center py-32 text-white/60 space-y-4">
+                  <p className="text-sm tracking-widest font-light">
                     {lang === 'ko' ? '아직 생성된 기록이 없습니다' : 'No history yet'}
                   </p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-8">
                   {history.map((log) => (
                     <div 
                       key={log.id}
-                      className="group p-1 rounded-[2rem] bg-white/5 backdrop-blur-2xl border border-white/10 hover:border-white/20 transition-all"
+                      className="group p-1 rounded-[2.5rem] bg-white/5 backdrop-blur-2xl border border-white/10 hover:border-white/20 transition-all overflow-hidden"
                     >
-                      <div className="p-6 space-y-6">
-                        {/* Summary Header */}
-                        <div className="flex flex-wrap items-center justify-between gap-4">
-                          <div className="flex items-center gap-4">
-                            <span className="px-3 py-1 rounded-lg bg-white/10 text-[10px] text-white/60 tracking-widest">
+                      <div className="p-8 space-y-8">
+                        {/* History Item Header */}
+                        <div className="flex items-center justify-between gap-6">
+                          <div className="flex items-center gap-4 shrink-0">
+                            <span className="px-3 py-1 rounded-lg bg-white/10 text-[10px] text-white/60 tracking-widest font-mono">
                               {log.id}
                             </span>
-                            <div className="flex flex-col">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-white">
-                                  {log.visualStyle} - {log.subject}
-                                </span>
-                                <span className="text-[10px] text-white/40">
-                                  {log.date}
-                                </span>
-                              </div>
-                              <div className="flex flex-wrap gap-2 mt-1">
-                                {log.options.slice(0, 3).map((opt, i) => (
-                                  <span key={i} className="text-[9px] text-white/30 tracking-tighter">
-                                    {opt}{i < Math.min(log.options.length, 3) - 1 ? ' /' : ''}
-                                  </span>
-                                ))}
-                                {log.options.length > 3 && (
-                                  <span className="text-[9px] text-white/30">...</span>
-                                )}
-                              </div>
-                            </div>
+                            <span className="text-[10px] text-white/40 tracking-widest uppercase">
+                              {log.date}
+                            </span>
                           </div>
-                          
-                          <div className="flex items-center gap-2">
+
+                          {/* Settings Chips (Moved to Header) */}
+                          <div className={`flex-1 flex gap-2 relative flex-wrap ${selectedHistoryId === log.id ? '' : 'max-h-[32px] overflow-hidden'}`}>
+                            {[
+                              { label: lang === 'ko' ? '주제' : 'Subject', value: log.subject },
+                              { label: lang === 'ko' ? '스타일' : 'Style', value: log.visualStyle },
+                              { label: lang === 'ko' ? '카메라' : 'Camera', value: log.camera },
+                              { label: lang === 'ko' ? '비율' : 'Ratio', value: log.ratio },
+                              ...log.options.map(opt => ({ label: 'Option', value: opt })),
+                              ...log.bgColors.map(c => ({ label: 'BG', value: c })),
+                              ...log.objColors.map(c => ({ label: 'OBJ', value: c }))
+                            ].map((chip, i) => (
+                              <div key={i} className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 flex items-center gap-2 shrink-0 h-[32px]">
+                                <span className="text-[8px] text-white/30 uppercase tracking-tighter">{chip.label}</span>
+                                <span className="text-[10px] text-white/80 font-medium whitespace-nowrap">{chip.value}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
                             <button
-                              onClick={() => handleCopy(log.prompt, log.id)}
-                              className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-bold text-white/60 hover:bg-white/10 hover:text-white transition-all flex items-center gap-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                restoreHistory(log);
+                              }}
+                              className="px-4 py-2 rounded-xl bg-white text-black text-[10px] font-bold tracking-widest hover:scale-105 transition-all"
                             >
-                              {copiedId === log.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                              {lang === 'ko' ? '복사하기' : 'COPY'}
-                            </button>
-                            <button
-                              onClick={() => restoreHistory(log)}
-                              className="px-4 py-2 rounded-xl bg-[#0071e3]/20 border border-[#0071e3]/40 text-[10px] font-bold text-[#0071e3] hover:bg-[#0071e3]/40 transition-all flex items-center gap-2"
-                            >
-                              <RefreshCw className="w-3 h-3" />
-                              {lang === 'ko' ? '불러오기' : 'RESTORE'}
+                              {lang === 'ko' ? '사용하기' : 'USE'}
                             </button>
                             <button
                               onClick={() => setSelectedHistoryId(selectedHistoryId === log.id ? null : log.id)}
@@ -1923,7 +1917,7 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* Detailed View */}
+                        {/* Dropdown Content Area */}
                         <AnimatePresence>
                           {selectedHistoryId === log.id && (
                             <motion.div
@@ -1932,25 +1926,62 @@ export default function App() {
                               exit={{ opacity: 0, height: 0 }}
                               className="overflow-hidden"
                             >
-                              <div className="pt-6 border-t border-white/10 space-y-6">
-                                {/* Insights */}
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                  {Object.entries(log.insights.visual_balance).map(([key, val]) => (
-                                    <div key={key} className="p-3 rounded-2xl bg-white/5 border border-white/5">
-                                      <div className="text-[8px] tracking-widest text-white/40 mb-1">{key}</div>
-                                      <div className="text-sm font-bold text-white">{val}%</div>
+                              <div className="pt-8 border-t border-white/10 space-y-8">
+                                {/* Main Content Grid */}
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                                  {/* Left: Image Preview */}
+                                  <div className="lg:col-span-4 space-y-4">
+                                    <div className="relative aspect-square rounded-3xl overflow-hidden bg-white/5 border border-white/10 group/img">
+                                      {log.generatedImage ? (
+                                        <img 
+                                          src={log.generatedImage} 
+                                          alt={log.subject}
+                                          className="w-full h-full object-cover"
+                                          referrerPolicy="no-referrer"
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-white/20">
+                                          <ImageIcon className="w-12 h-12" />
+                                        </div>
+                                      )}
+                                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                                        <button
+                                          onClick={() => restoreHistory(log)}
+                                          className="px-6 py-3 rounded-2xl bg-white text-black text-xs font-bold tracking-widest hover:scale-105 transition-transform flex items-center gap-2"
+                                        >
+                                          <RefreshCw className="w-4 h-4" />
+                                          {lang === 'ko' ? '불러오기' : 'RESTORE'}
+                                        </button>
+                                      </div>
                                     </div>
-                                  ))}
-                                </div>
-
-                                {/* Prompt */}
-                                <div className="p-6 rounded-2xl bg-black/40 border border-white/5">
-                                  <div className="flex items-center justify-between mb-3">
-                                    <span className="text-[9px] text-white/40 tracking-widest">Prompt Log</span>
                                   </div>
-                                  <p className="text-xs leading-relaxed text-white/80 font-mono italic">
-                                    {log.prompt}
-                                  </p>
+
+                                  {/* Right: Prompts */}
+                                  <div className="lg:col-span-8 space-y-6">
+                                    <div className="grid grid-cols-1 gap-4">
+                                      {[
+                                        { id: 'midjourney', name: 'Midjourney v6', content: log.prompts.midjourney },
+                                        { id: 'dalle', name: 'DALL-E 3', content: log.prompts.dalle },
+                                        { id: 'stableDiffusion', name: 'Stable Diffusion XL', content: log.prompts.stableDiffusion }
+                                      ].map((p) => (
+                                        <div key={p.id} className="p-4 rounded-2xl bg-black/40 border border-white/5 space-y-3">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-[9px] text-white/40 tracking-widest uppercase font-bold">{p.name}</span>
+                                            <button
+                                              onClick={() => handleCopy(p.content, `${log.id}-${p.id}`)}
+                                              className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-all"
+                                              title={lang === 'ko' ? '복사하기' : 'Copy'}
+                                            >
+                                              {copiedId === `${log.id}-${p.id}` ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                            </button>
+                                          </div>
+                                          <p className="text-[11px] leading-relaxed text-white/70 font-mono italic">
+                                            {p.content}
+                                          </p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             </motion.div>
@@ -1983,7 +2014,7 @@ export default function App() {
                   <div 
                     key={tier}
                     className={`relative p-8 rounded-[2.5rem] backdrop-blur-3xl border transition-all duration-500 ${
-                      userTier === tier 
+                      userTier === tier.toUpperCase() 
                         ? 'bg-white/10 border-white/40 shadow-[0_0_50px_-12px_rgba(255,255,255,0.2)]' 
                         : 'bg-white/5 border-white/10 hover:border-white/20'
                     }`}
@@ -2005,30 +2036,31 @@ export default function App() {
                             <div className="mt-1 p-1 rounded-full bg-[#0071e3] shadow-[0_0_15px_rgba(0,113,227,0.4)] flex-shrink-0">
                               <Check className="w-2.5 h-2.5 text-white stroke-[3.5]" />
                             </div>
-                            <span className="text-xs text-white/90 leading-relaxed font-medium">{feature}</span>
+                            <span className="text-xs text-white/90 leading-relaxed font-light">{feature}</span>
                           </li>
                         ))}
                       </ul>
 
                       <button
                         onClick={() => {
-                          if (tier !== 'FREE') {
-                            setUserTier(tier as 'FREE' | 'PRO' | 'TEAM');
+                          const upperTier = tier.toUpperCase() as 'FREE' | 'PRO' | 'TEAM';
+                          if (userTier !== upperTier) {
+                            setUserTier(upperTier);
                             setRestoreMessage(lang === 'ko' ? `${tier} 요금제로 업그레이드되었습니다!` : `Upgraded to ${tier} plan!`);
                             setTimeout(() => setRestoreMessage(null), 3000);
                           }
                         }}
-                        disabled={userTier === tier}
+                        disabled={userTier === tier.toUpperCase()}
                         className={`w-full mt-auto py-4 rounded-2xl text-[11px] tracking-[0.2em] transition-all ${
-                          userTier === tier
+                          userTier === tier.toUpperCase()
                             ? 'bg-white/5 border border-white/10 text-white/20 cursor-default'
                             : (tier === 'Pro' || tier === 'Team')
                               ? 'bg-white text-black font-bold hover:scale-[1.02] active:scale-[0.98]'
                               : 'bg-white/10 text-white hover:bg-white/20 hover:scale-[1.02] active:scale-[0.98]'
                         }`}
                       >
-                        {userTier === tier 
-                          ? (lang === 'ko' ? '사용 중' : 'ACTIVE') 
+                        {userTier === tier.toUpperCase() 
+                          ? (lang === 'ko' ? '사용중' : 'IN USE') 
                           : (lang === 'ko' ? '선택하기' : 'SELECT PLAN')}
                       </button>
                     </div>
