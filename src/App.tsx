@@ -1109,34 +1109,37 @@ export default function App() {
         <motion.header 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-16 relative w-full"
+          className="w-full max-w-6xl mx-auto mb-16 text-center"
         >
-          {/* Language Toggle */}
-          <div className="absolute right-0 top-0 flex gap-2 z-50">
-            <button
-              onClick={(e) => { e.preventDefault(); setLang('en'); }}
-              className={`px-3 py-1 rounded-full text-[10px] transition-all ${
-                lang === 'en' ? 'bg-white text-black font-bold' : 'bg-white/5 text-white/40 hover:bg-white/10'
-              }`}
+          <div className="relative flex items-center justify-center mb-3">
+            <h1 
+              onClick={resetApp}
+              className="text-3xl md:text-5xl font-display font-semibold tracking-tight text-white cursor-pointer hover:opacity-80 transition-opacity"
             >
-              EN
-            </button>
-            <button
-              onClick={(e) => { e.preventDefault(); setLang('ko'); }}
-              className={`px-3 py-1 rounded-full text-[10px] transition-all ${
-                lang === 'ko' ? 'bg-white text-black font-bold' : 'bg-white/5 text-white/40 hover:bg-white/10'
-              }`}
-            >
-              KO
-            </button>
+              AI ImagiGen
+            </h1>
+
+            {/* Language Toggle */}
+            <div className="absolute right-0 flex gap-2 z-50">
+              <button
+                onClick={(e) => { e.preventDefault(); setLang('en'); }}
+                className={`px-3 py-1 rounded-full text-[10px] transition-all ${
+                  lang === 'en' ? 'bg-white text-black font-bold' : 'bg-white/5 text-white/40 hover:bg-white/10'
+                }`}
+              >
+                EN
+              </button>
+              <button
+                onClick={(e) => { e.preventDefault(); setLang('ko'); }}
+                className={`px-3 py-1 rounded-full text-[10px] transition-all ${
+                  lang === 'ko' ? 'bg-white text-black font-bold' : 'bg-white/5 text-white/40 hover:bg-white/10'
+                }`}
+              >
+                KO
+              </button>
+            </div>
           </div>
 
-          <h1 
-            onClick={resetApp}
-            className="text-3xl md:text-5xl font-display font-semibold tracking-tight text-white mb-3 cursor-pointer hover:opacity-80 transition-opacity"
-          >
-            AI ImagiGen
-          </h1>
           <p className="text-[10px] md:text-xs tracking-[0.4em] text-white/40 mb-8">
             {t.subtitle}
           </p>
@@ -1220,7 +1223,7 @@ export default function App() {
                   onChange={(e) => setIdea(e.target.value)}
                   onFocus={() => setIsEditing(true)}
                   placeholder={t.placeholder}
-                  className="w-full min-h-[80px] px-20 py-7 rounded-[2.5rem] bg-white/5 backdrop-blur-2xl border border-white/20 focus:border-white/40 focus:bg-white/10 outline-none text-lg placeholder:text-white/20 resize-none text-white text-center shadow-2xl overflow-hidden transition-[border-color,background-color] duration-200"
+                  className="w-full min-h-[80px] px-20 py-7 rounded-[2.5rem] bg-white/5 backdrop-blur-2xl border border-white/20 focus:border-white/40 focus:bg-white/10 outline-none text-lg placeholder:text-white/40 resize-none text-white text-center shadow-2xl overflow-hidden transition-[border-color,background-color] duration-200"
                 />
                 
                 {/* Reference Image Icon Button */}
@@ -1275,7 +1278,7 @@ export default function App() {
                   exit={{ opacity: 0, height: 0, y: 20 }}
                   className="overflow-visible px-4 pb-12 -mx-4 -mb-12"
                 >
-                  <div className="space-y-6 bg-white/[0.03] backdrop-blur-3xl border border-white/10 p-8 rounded-[2.5rem] shadow-2xl mt-4 relative overflow-hidden">
+                  <div className="space-y-6 bg-white/[0.03] backdrop-blur-3xl border border-white/10 p-8 rounded-[2.5rem] shadow-2xl mt-4 relative">
                     {/* Close Settings Button (only if results exist) */}
                     {(result || generatedImage) && (
                       <button 
@@ -1333,7 +1336,7 @@ export default function App() {
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
-                            className="space-y-10 overflow-hidden"
+                            className="space-y-10"
                           >
                             <div className="h-px bg-white/10 w-full" />
 
