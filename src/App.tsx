@@ -1109,7 +1109,7 @@ export default function App() {
         <motion.header 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-6xl mx-auto mb-16 text-center"
+          className="w-full max-w-7xl mx-auto mb-16 text-center"
         >
           <div className="relative flex items-center justify-center mb-3">
             <h1 
@@ -2075,7 +2075,7 @@ export default function App() {
         </main>
 
         {/* Footer */}
-        <footer className="w-full max-w-6xl mt-auto pt-24 pb-12 space-y-8">
+        <footer className="w-full max-w-7xl mt-auto pt-24 pb-12 space-y-8">
           <div className="h-px bg-white/10 w-full" />
           
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
