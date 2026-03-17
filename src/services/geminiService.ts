@@ -1,11 +1,31 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 2000): Promise<T> {
+  try {
+    return await fn();
+  } catch (error: any) {
+    const isRateLimit = error.message?.includes('429') || 
+                        error.message?.includes('RESOURCE_EXHAUSTED') ||
+                        error.message?.includes('quota');
+    
+    if (isRateLimit && retries > 0) {
+      console.warn(`Gemini API rate limit hit. Retrying in ${delay}ms... (${retries} retries left)`);
+      await sleep(delay);
+      return withRetry(fn, retries - 1, delay * 2);
+    }
+    throw error;
+  }
+}
+
 export interface VisualBalance {
   depth: number;
   modernity: number;
   aesthetic: number;
   vibrancy: number;
   minimalism: number;
+  geometry: number;
 }
 
 export interface ToneManner {
@@ -127,14 +147,18 @@ export async function generateWallpaper(
   bgColors: string[] = [], 
   objectColors: string[] = [], 
   camera?: string,
-  aspectRatio: "1:1" | "3:4" | "4:3" | "9:16" | "16:9" = "16:9"
+  aspectRatio: "1:1" | "3:4" | "4:3" | "9:16" | "16:9" = "16:9",
+  preRefinedPrompt?: string
 ): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
   const ai = new GoogleGenAI({ apiKey });
   
-  // 1. First, use Gemini 3 Flash to generate a high-quality image prompt based on the user's rules
-  const promptModel = "gemini-3-flash-preview";
-  const promptSystemInstruction = `
+  let refinedPrompt = preRefinedPrompt;
+
+  if (!refinedPrompt) {
+    // 1. First, use Gemini 3 Flash to generate a high-quality image prompt based on the user's rules
+    const promptModel = "gemini-3-flash-preview";
+    const promptSystemInstruction = `
 너는 전세계 최고의 **'AI Image Prompt Engineer'**야. 
 사용자의 아이디어와 선택된 5단계 스타일 옵션을 바탕으로, 'Gemini 2.5 Flash Image (Nano Banana)' 모델이 가장 선호하는 고퀄리티 영문 프롬프트를 생성해줘.
 
@@ -162,30 +186,32 @@ export async function generateWallpaper(
 오직 생성된 영문 프롬프트 문자열만 출력해. 다른 설명은 생략해.
 `;
 
-  const promptResponse = await ai.models.generateContent({
-    model: promptModel,
-    contents: {
-      parts: [
-        {
-          text: `사용자 아이디어: "${userIdea}"
+    const promptResponse = await withRetry(() => ai.models.generateContent({
+      model: promptModel,
+      contents: {
+        parts: [
+          {
+            text: `사용자 아이디어: "${userIdea}"
 스타일 옵션: [${options.join(', ')}]
 배경색: ${bgColors.join(', ')}
 오브젝트 색상: ${objectColors.join(', ')}
 카메라 각도: ${camera || 'Eye Level'}
 비율: ${aspectRatio}`,
-        },
-      ],
-    },
-    config: {
-      systemInstruction: promptSystemInstruction,
-    },
-  });
+          },
+        ],
+      },
+      config: {
+        systemInstruction: promptSystemInstruction,
+      },
+    }));
 
-  const refinedPrompt = promptResponse.text || userIdea;
-  console.log("Refined Image Prompt:", refinedPrompt);
+    refinedPrompt = promptResponse.text || userIdea;
+  }
+  
+  console.log("Image Prompt to use:", refinedPrompt);
 
   // 2. Generate the image using the refined prompt with Gemini 2.5 Flash Image (Free Tier)
-  const response = await ai.models.generateContent({
+  const response = await withRetry(() => ai.models.generateContent({
     model: 'gemini-2.5-flash-image',
     contents: {
       parts: [
@@ -199,7 +225,7 @@ export async function generateWallpaper(
         aspectRatio: aspectRatio,
       },
     },
-  });
+  }));
 
   for (const part of response.candidates?.[0]?.content?.parts || []) {
     if (part.inlineData) {
@@ -252,7 +278,7 @@ export async function analyzeImage(image: string): Promise<ImageAnalysis> {
 - 반드시 JSON 형식으로 응답할 것.
 `;
 
-  const response = await ai.models.generateContent({
+  const response = await withRetry(() => ai.models.generateContent({
     model: model,
     contents: {
       parts: [
@@ -289,7 +315,7 @@ export async function analyzeImage(image: string): Promise<ImageAnalysis> {
         required: ["camera", "ratio", "selectedOptions", "bgColors", "objColors"],
       }
     }
-  });
+  }));
 
   return JSON.parse(response.text || "{}") as ImageAnalysis;
 }
@@ -322,7 +348,7 @@ export async function expandPrompt(
 [Tasks]
 1. Generate Prompts: Midjourney (v6.0), DALL-E 3, Stable Diffusion. (항상 영문으로 생성)
 2. Design Insight: 
-   - Visual Balance (0-100): Depth, Modernity, Aesthetic, Vibrancy, Minimalism.
+   - Visual Balance (0-100): Depth, Modernity, Aesthetic, Vibrancy, Minimalism, Geometry.
    - Tone & Manner: Temperature (warm/cool), Dynamism (low/medium/high).
    - Texture Density: Reflectivity, Transparency, Roughness.
    - Design Intent & Designer Comment: 사용자가 선택한 언어(${lang === 'ko' ? '한국어' : '영어'})로 작성할 것.
@@ -360,7 +386,7 @@ export async function expandPrompt(
     });
   }
 
-  const response = await ai.models.generateContent({
+  const response = await withRetry(() => ai.models.generateContent({
     model: model,
     contents: contents,
     config: {
@@ -384,8 +410,9 @@ export async function expandPrompt(
                   aesthetic: { type: Type.NUMBER },
                   vibrancy: { type: Type.NUMBER },
                   minimalism: { type: Type.NUMBER },
+                  geometry: { type: Type.NUMBER },
                 },
-                required: ["depth", "modernity", "aesthetic", "vibrancy", "minimalism"],
+                required: ["depth", "modernity", "aesthetic", "vibrancy", "minimalism", "geometry"],
               },
               tone_manner: {
                 type: Type.OBJECT,
@@ -412,7 +439,7 @@ export async function expandPrompt(
         required: ["midjourney", "dalle", "stableDiffusion", "designIntent", "insight"],
       },
     },
-  });
+  }));
 
   try {
     const text = response.text;

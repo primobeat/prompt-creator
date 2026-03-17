@@ -10,13 +10,15 @@ import {
   Zap, Box, Droplets, Gem, Candy, Wind, Gamepad2, Layers, Plus, X, 
   Camera, Maximize, Image as ImageIcon, BarChart3, Activity, Thermometer, 
   Layers as LayersIcon, Info, ChevronDown, PenTool, Sun, Moon, Scissors, Square,
-  Download, Pencil, StickyNote, Grid, Focus, Aperture, Film, Clock, Eye, Move, Circle, Users
+  Download, Pencil, StickyNote, Grid, Focus, Aperture, Film, Clock, Eye, Move, Circle, Users,
+  Database, Terminal, FileText
 } from 'lucide-react';
 import { HexColorPicker } from 'react-colorful';
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, Tooltip, Cell
 } from 'recharts';
+import { Moodboard } from './components/Moodboard';
 import { 
   expandPrompt, analyzeImage, generateWallpaper, PromptExpansion, StyleOption, 
   InsightDashboard as InsightType 
@@ -128,6 +130,36 @@ declare global {
   }
 }
 
+const LoadingSequence = () => {
+  const [index, setIndex] = useState(0);
+  const icons = [Database, FileText, Terminal, ImageIcon];
+  
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIndex((prev) => (prev + 1) % icons.length);
+    }, 1200);
+    return () => clearInterval(timer);
+  }, []);
+
+  const Icon = icons[index];
+
+  return (
+    <div className="flex items-center justify-center h-16 w-16">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={index}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.4, ease: "easeInOut" }}
+        >
+          <Icon className="w-10 h-10 text-white" />
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+};
+
 export default function App() {
   const [idea, setIdea] = useState('');
   const [referenceImage, setReferenceImage] = useState<string | null>(null);
@@ -155,11 +187,15 @@ export default function App() {
   const [lang, setLang] = useState<'en' | 'ko'>('ko');
   const [isEditing, setIsEditing] = useState(false);
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'CREATE' | 'HISTORY' | 'UPGRADE'>('CREATE');
-  const [history, setHistory] = useState<HistoryLog[]>([]);
+  const [activeTab, setActiveTab] = useState<'CREATE' | 'HISTORY' | 'MOODBOARD' | 'UPGRADE'>('CREATE');
+  const [history, setHistory] = useState<HistoryLog[]>(() => {
+    const saved = localStorage.getItem('imagigen_history');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const [restoreMessage, setRestoreMessage] = useState<string | null>(null);
   const [bgImage, setBgImage] = useState('');
+  const [moodboardTrigger, setMoodboardTrigger] = useState<number>(0);
 
   useEffect(() => {
     const getNextImageUrl = () => `https://picsum.photos/3840/2160?grayscale&random=${Math.random()}`;
@@ -181,6 +217,10 @@ export default function App() {
 
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('imagigen_history', JSON.stringify(history));
+  }, [history]);
 
   const [userTier, setUserTier] = useState<'FREE' | 'PRO' | 'TEAM'>('FREE');
   const [generationCount, setGenerationCount] = useState(0);
@@ -903,10 +943,8 @@ export default function App() {
     setImageError(null);
 
     try {
-      let finalPromptRes: PromptExpansion | null = null;
-
-      // Run both in parallel but handle them separately to allow partial success
-      const promptPromise = expandPrompt(
+      // 1. First expand the prompt and get design insights
+      const promptRes = await expandPrompt(
         idea, 
         activeOptions, 
         formatColors(selectedBgColors), 
@@ -915,36 +953,34 @@ export default function App() {
         selectedRatio as any,
         lang,
         referenceImage || undefined
-      ).then(res => {
-        finalPromptRes = res;
-        setResult(res);
-        setLoading(false);
-        return res;
-      });
+      );
 
-      const imagePromise = generateWallpaper(
-        idea, 
-        activeOptions, 
-        formatColors(selectedBgColors), 
-        formatColors(selectedObjectColors), 
-        selectedCamera,
-        selectedRatio as any
-      ).then(url => {
-        setGeneratedImage(url);
-        return url;
-      })
-      .catch(err => {
+      setResult(promptRes);
+      setLoading(false);
+
+      // 2. Then generate the image using the DALL-E prompt from the expansion to save an API call
+      let imageUrl: string | null = null;
+      try {
+        imageUrl = await generateWallpaper(
+          idea, 
+          activeOptions, 
+          formatColors(selectedBgColors), 
+          formatColors(selectedObjectColors), 
+          selectedCamera,
+          selectedRatio as any,
+          promptRes.dalle // Use the pre-generated prompt to save quota
+        );
+        setGeneratedImage(imageUrl);
+      } catch (err: any) {
         console.error("Image generation failed:", err);
         if (err.message?.includes('429') || err.message?.includes('quota')) {
           setImageError(lang === 'ko' ? '무료 티어 쿼터(일 20회)를 초과했습니다. 내일 다시 시도해주세요.' : 'Free tier quota exceeded. Please try again tomorrow.');
         } else {
           setImageError(lang === 'ko' ? '이미지 생성에 실패했습니다.' : 'Image generation failed.');
         }
-        return null;
-      })
-      .finally(() => setGeneratingImage(false));
-
-      const [promptRes, imageUrl] = await Promise.all([promptPromise, imagePromise]);
+      } finally {
+        setGeneratingImage(false);
+      }
 
       // Save to history if prompt generation was successful
       if (promptRes) {
@@ -969,6 +1005,8 @@ export default function App() {
           referenceImage: referenceImage
         };
         setHistory(prev => [newLog, ...prev]);
+        // Trigger Moodboard Update
+        setMoodboardTrigger(Date.now());
       }
     } catch (error: any) {
       console.error("Overall generation failed:", error);
@@ -1124,7 +1162,7 @@ export default function App() {
               <button
                 onClick={(e) => { e.preventDefault(); setLang('en'); }}
                 className={`px-3 py-1 rounded-full text-[10px] transition-all ${
-                  lang === 'en' ? 'bg-white text-black font-bold' : 'bg-white/5 text-white/40 hover:bg-white/10'
+                  lang === 'en' ? 'bg-white text-black font-bold' : 'bg-white/10 text-white/70 hover:bg-white/20'
                 }`}
               >
                 EN
@@ -1132,7 +1170,7 @@ export default function App() {
               <button
                 onClick={(e) => { e.preventDefault(); setLang('ko'); }}
                 className={`px-3 py-1 rounded-full text-[10px] transition-all ${
-                  lang === 'ko' ? 'bg-white text-black font-bold' : 'bg-white/5 text-white/40 hover:bg-white/10'
+                  lang === 'ko' ? 'bg-white text-black font-bold' : 'bg-white/10 text-white/70 hover:bg-white/20'
                 }`}
               >
                 KO
@@ -1140,7 +1178,7 @@ export default function App() {
             </div>
           </div>
 
-          <p className="text-[10px] md:text-xs tracking-[0.4em] text-white/40 mb-8">
+          <p className="text-[10px] md:text-xs tracking-[0.4em] text-white/70 mb-8">
             {t.subtitle}
           </p>
 
@@ -1148,7 +1186,7 @@ export default function App() {
           <div className="flex items-center justify-center gap-12 mx-auto">
             <button
               onClick={() => setActiveTab('CREATE')}
-              className={`relative py-2 text-[11px] tracking-[0.3em] transition-all ${activeTab === 'CREATE' ? 'text-white font-medium' : 'text-white/30 hover:text-white/60'}`}
+              className={`relative py-2 text-[11px] tracking-[0.3em] transition-all ${activeTab === 'CREATE' ? 'text-white font-medium' : 'text-white/60 hover:text-white/80'}`}
             >
               CREATE
               {activeTab === 'CREATE' && (
@@ -1161,7 +1199,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab('HISTORY')}
-              className={`relative py-2 text-[11px] tracking-[0.3em] transition-all ${activeTab === 'HISTORY' ? 'text-white font-medium' : 'text-white/30 hover:text-white/60'}`}
+              className={`relative py-2 text-[11px] tracking-[0.3em] transition-all ${activeTab === 'HISTORY' ? 'text-white font-medium' : 'text-white/60 hover:text-white/80'}`}
             >
               HISTORY
               {activeTab === 'HISTORY' && (
@@ -1173,8 +1211,21 @@ export default function App() {
               )}
             </button>
             <button
+              onClick={() => setActiveTab('MOODBOARD')}
+              className={`relative py-2 text-[11px] tracking-[0.3em] transition-all ${activeTab === 'MOODBOARD' ? 'text-white font-medium' : 'text-white/60 hover:text-white/80'}`}
+            >
+              MOODBOARD
+              {activeTab === 'MOODBOARD' && (
+                <motion.div 
+                  layoutId="activeTab"
+                  className="absolute bottom-0 left-0 right-0 h-[2px] bg-white"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+            </button>
+            <button
               onClick={() => setActiveTab('UPGRADE')}
-              className={`relative py-2 text-[11px] tracking-[0.3em] transition-all flex items-center gap-2 ${activeTab === 'UPGRADE' ? 'text-white font-medium' : 'text-white/30 hover:text-white/60'}`}
+              className={`relative py-2 text-[11px] tracking-[0.3em] transition-all flex items-center gap-2 ${activeTab === 'UPGRADE' ? 'text-white font-medium' : 'text-white/60 hover:text-white/80'}`}
             >
               UPGRADE
               <span className="px-1.5 py-0.5 rounded-md bg-[#0071e3] text-[8px] text-white font-bold tracking-normal">Pro</span>
@@ -1283,7 +1334,7 @@ export default function App() {
                     {(result || generatedImage) && (
                       <button 
                         onClick={() => setIsEditing(false)}
-                        className="absolute top-6 right-8 p-2 rounded-full bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all"
+                        className="absolute top-6 right-8 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-all"
                         title={lang === 'ko' ? '결과 보기' : 'Show Results'}
                       >
                         <X className="w-4 h-4" />
@@ -1315,7 +1366,7 @@ export default function App() {
                                       className={`flex items-center gap-3 px-5 py-4 rounded-2xl text-xs font-light transition-all border ${
                                         isSelected 
                                           ? 'bg-white border-white text-black shadow-[0_10px_30px_rgba(255,255,255,0.2)]' 
-                                          : 'bg-white/5 border-white/5 text-white hover:border-white/20'
+                                          : 'bg-white/10 border-white/10 text-white hover:border-white/30'
                                       }`}
                                     >
                                       <Icon className={`w-4 h-4 ${isSelected ? 'text-black' : 'text-white'}`} />
@@ -1358,8 +1409,8 @@ export default function App() {
                                 return (
                                   <div key={category.key} className="space-y-4">
                                     <div className="flex items-center gap-2 ml-1">
-                                      <CategoryIcon className="w-3.5 h-3.5 text-white/60" />
-                                      <span className="text-[10px] font-sans font-light tracking-[0.2em] text-white/60">
+                                      <CategoryIcon className="w-3.5 h-3.5 text-white/80" />
+                                      <span className="text-[10px] font-sans font-light tracking-[0.2em] text-white/80">
                                         {t[category.key as keyof typeof t] as string}
                                       </span>
                                     </div>
@@ -1374,7 +1425,7 @@ export default function App() {
                                             className={`flex items-center gap-2.5 px-4 py-3.5 rounded-xl text-[11px] font-light transition-all border ${
                                               isSelected 
                                                 ? 'bg-white border-white text-black shadow-[0_5px_15px_rgba(255,255,255,0.15)]' 
-                                                : 'bg-white/5 border-white/5 text-white hover:border-white/20'
+                                                : 'bg-white/10 border-white/10 text-white hover:border-white/30'
                                             }`}
                                           >
                                             <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-black' : 'text-white'}`} />
@@ -1456,7 +1507,7 @@ export default function App() {
                                         {activeCustomBg ? (
                                           <Check className={`w-4 h-4 ${isLightColor(activeCustomBg) ? 'text-black' : 'text-white'}`} />
                                         ) : (
-                                          <Plus className="w-4 h-4 text-white/40 group-hover:text-white/60" />
+                                          <Plus className="w-4 h-4 text-white/60 group-hover:text-white/80" />
                                         )}
                                       </button>
                                     </div>
@@ -1525,7 +1576,7 @@ export default function App() {
                                         {activeCustomObj ? (
                                           <Check className={`w-4 h-4 ${isLightColor(activeCustomObj) ? 'text-black' : 'text-white'}`} />
                                         ) : (
-                                          <Plus className="w-4 h-4 text-white/40 group-hover:text-white/60" />
+                                          <Plus className="w-4 h-4 text-white/60 group-hover:text-white/80" />
                                         )}
                                       </button>
                                     </div>
@@ -1594,10 +1645,10 @@ export default function App() {
               >
                 {loading ? (
                   <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <div className="mb-6">
-                      <RefreshCw className="w-10 h-10 text-white animate-spin" />
+                    <div className="mb-8">
+                      <LoadingSequence />
                     </div>
-                                  <span className="text-[10px] tracking-[0.3em] text-white/60">
+                                  <span className="text-[10px] tracking-[0.3em] text-white/60 uppercase">
                                     {t.forging}
                                   </span>
                   </div>
@@ -1859,7 +1910,7 @@ export default function App() {
               )}
 
               {history.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-32 text-white/60 space-y-4">
+                <div className="flex flex-col items-center justify-center py-32 text-white/80 space-y-4">
                   <p className="text-sm tracking-widest font-light">
                     {lang === 'ko' ? '아직 생성된 기록이 없습니다' : 'No history yet'}
                   </p>
@@ -1996,6 +2047,29 @@ export default function App() {
                 </div>
               )}
             </motion.div>
+          ) : activeTab === 'MOODBOARD' ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="w-full"
+            >
+              <Moodboard 
+                history={history} 
+                currentIdea={idea}
+                selectedOptions={selectedOptions}
+                selectedBgColors={selectedBgColors}
+                selectedObjectColors={selectedObjectColors}
+                selectedCamera={selectedCamera}
+                lang={lang} 
+                triggerUpdate={moodboardTrigger}
+                onUseStyle={(keywords) => {
+                  setIdea(keywords);
+                  setActiveTab('CREATE');
+                  // Scroll to top
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }} 
+              />
+            </motion.div>
           ) : (
             /* Upgrade Tab Content */
             <motion.div 
@@ -2007,7 +2081,7 @@ export default function App() {
                 <h2 className="text-4xl font-bold text-white tracking-tighter">
                   {lang === 'ko' ? '당신에게 맞는 요금제를 선택하세요' : 'Choose the plan that fits you'}
                 </h2>
-                <p className="text-white/40 text-sm tracking-widest">
+                <p className="text-white/70 text-sm tracking-widest">
                   {lang === 'ko' ? '더 강력한 기능으로 창의력을 발휘하세요' : 'Unleash your creativity with more power'}
                 </p>
               </div>
@@ -2018,8 +2092,8 @@ export default function App() {
                     key={tier}
                     className={`relative p-8 rounded-[2.5rem] backdrop-blur-3xl border transition-all duration-500 ${
                       userTier === tier.toUpperCase() 
-                        ? 'bg-white/10 border-white/40 shadow-[0_0_50px_-12px_rgba(255,255,255,0.2)]' 
-                        : 'bg-white/5 border-white/10 hover:border-white/20'
+                        ? 'bg-white/10 border-white/60 shadow-[0_0_50px_-12px_rgba(255,255,255,0.2)]' 
+                        : 'bg-white/5 border-white/20 hover:border-white/40'
                     }`}
                   >
                     <div className="flex flex-col h-full space-y-6">
@@ -2027,11 +2101,11 @@ export default function App() {
                         <h3 className="text-2xl font-bold text-white tracking-tight">{tier}</h3>
                         <div className="flex items-baseline gap-1">
                           <span className="text-3xl font-bold text-white">{t.pricing[tier.toLowerCase() as keyof typeof t.pricing].price}</span>
-                          <span className="text-white/40 text-[10px] tracking-widest">/ month</span>
+                          <span className="text-white/70 text-[10px] tracking-widest">/ month</span>
                         </div>
                       </div>
 
-                      <div className="h-px bg-white/10 w-full" />
+                      <div className="h-px bg-white/20 w-full" />
 
                       <ul className="space-y-4">
                         {t.pricing[tier.toLowerCase() as keyof typeof t.pricing].features.map((feature: string, i: number) => (
@@ -2081,14 +2155,14 @@ export default function App() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div className="flex items-center gap-3">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-[10px] tracking-[0.2em] text-white/80">
+              <p className="text-[10px] tracking-[0.2em] text-white/90">
                 System Ready // <span className="text-white">ⓒ 2026 AI ImagiGen</span>
               </p>
             </div>
 
-            <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
+            <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-white/10 border border-white/20 backdrop-blur-md">
               <Zap className="w-3 h-3 text-amber-400" />
-              <span className="text-[9px] tracking-[0.2em] text-white/60">
+              <span className="text-[9px] tracking-[0.2em] text-white/80">
                 Powered by Gemini 2.5 Flash ({userTier} Tier)
               </span>
             </div>
@@ -2120,7 +2194,7 @@ export default function App() {
                   <h3 className="text-3xl font-bold text-white tracking-tighter">
                     {upgradeReason === 'limit' ? t.upgrade.limitReached : t.upgrade.proOnly}
                   </h3>
-                  <p className="text-white/60 text-sm leading-relaxed">
+                  <p className="text-white/80 text-sm leading-relaxed">
                     {upgradeReason === 'limit' ? t.upgrade.limitReachedDesc : t.upgrade.proOnlyDesc}
                   </p>
                 </div>
