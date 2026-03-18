@@ -11,7 +11,7 @@ import {
   Camera, Maximize, Image as ImageIcon, BarChart3, Activity, Thermometer, 
   Layers as LayersIcon, Info, ChevronDown, PenTool, Sun, Moon, Scissors, Square,
   Download, Pencil, StickyNote, Grid, Focus, Aperture, Film, Clock, Eye, Move, Circle, Users,
-  Database, Terminal, FileText
+  Database, Terminal, FileText, Trash2
 } from 'lucide-react';
 import { HexColorPicker } from 'react-colorful';
 import { 
@@ -82,11 +82,11 @@ const CustomDropdown = ({
       </div>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-[11px] font-light text-white flex items-center justify-between hover:bg-white/10 transition-all outline-none"
+        className="w-full px-4 py-3 rounded-2xl bg-white/15 border border-white/25 text-[11px] font-light text-white flex items-center justify-between hover:bg-white/25 transition-all outline-none"
       >
         {value}
         <motion.div animate={{ rotate: isOpen ? 180 : 0 }}>
-          <ChevronDown className="w-3 h-3 text-white/40" />
+          <ChevronDown className="w-3 h-3 text-white/60" />
         </motion.div>
       </button>
       
@@ -196,6 +196,12 @@ export default function App() {
   const [restoreMessage, setRestoreMessage] = useState<string | null>(null);
   const [bgImage, setBgImage] = useState('');
   const [moodboardTrigger, setMoodboardTrigger] = useState<number>(0);
+  const [moodboardImages, setMoodboardImages] = useState<any[]>(() => {
+    const saved = localStorage.getItem('imagigen_moodboard');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [moodboardQuery, setMoodboardQuery] = useState('');
+  const [moodboardLoading, setMoodboardLoading] = useState(false);
 
   useEffect(() => {
     const getNextImageUrl = () => `https://picsum.photos/3840/2160?grayscale&random=${Math.random()}`;
@@ -222,10 +228,43 @@ export default function App() {
     localStorage.setItem('imagigen_history', JSON.stringify(history));
   }, [history]);
 
+  useEffect(() => {
+    localStorage.setItem('imagigen_moodboard', JSON.stringify(moodboardImages));
+  }, [moodboardImages]);
+
   const [userTier, setUserTier] = useState<'FREE' | 'PRO' | 'TEAM'>('FREE');
   const [generationCount, setGenerationCount] = useState(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeReason, setUpgradeReason] = useState('');
+
+  const handleFetchMoodboard = async (query: string, force: boolean = false) => {
+    if (!query || query.trim() === "") {
+      // Don't clear moodboardImages if it's already populated, just return
+      if (moodboardImages.length === 0) {
+        setMoodboardQuery("");
+      }
+      return;
+    }
+    
+    // If not forced and query is same, only return if we already have images and it's not a forced refresh
+    // However, for the "Archive" feature, we might want to allow multiple fetches for the same query
+    // to get more variety. We'll allow it if force is true.
+    if (!force && query === moodboardQuery && moodboardImages.length > 20) return;
+    
+    setMoodboardLoading(true);
+    setMoodboardQuery(query);
+    const { searchImages } = await import('./services/unsplashService');
+    const results = await searchImages(query);
+    
+    // Cumulative addition: prepend new results and filter duplicates by id
+    setMoodboardImages(prev => {
+      const existingIds = new Set(prev.map(img => img.id));
+      const newUniqueResults = results.filter(img => !existingIds.has(img.id));
+      return [...newUniqueResults, ...prev];
+    });
+    
+    setMoodboardLoading(false);
+  };
 
   const resetApp = () => {
     setIdea('');
@@ -294,9 +333,12 @@ export default function App() {
         upgrade: "Upgrade"
       },
       styles: {
-        'Minimalist': 'Minimalist',
-        'Geometric': 'Geometric',
-        'Detailism': 'Detailism',
+        'Minimalism': 'Minimalism',
+        'Artistic': 'Artistic',
+        'Geometry': 'Geometry',
+        'Abstract': 'Abstract',
+        'Futuristic': 'Futuristic',
+        'Experimental': 'Experimental',
         '2D Artwork': '2D Artwork',
         '3D Rendering': '3D Rendering',
         'Real Photo': 'Real Photo',
@@ -381,7 +423,7 @@ export default function App() {
         'Top View': 'Top View',
         'Isometric': 'Isometric'
       },
-      forging: "Generating image and prompt...",
+      forging: "Generating image...",
       upgrade: "Upgrade",
       proOnly: "Pro Exclusive",
       proOnlyDesc: "This feature is only available for Pro users.",
@@ -458,9 +500,12 @@ export default function App() {
         upgrade: "업그레이드"
       },
       styles: {
-        'Minimalist': '미니멀리즘',
-        'Geometric': '기하학',
-        'Detailism': '디테일리즘',
+        'Minimalism': '미니멀',
+        'Artistic': '예술적',
+        'Geometry': '기하학',
+        'Abstract': '추상',
+        'Futuristic': '미래적',
+        'Experimental': '실험적',
         '2D Artwork': '2D 아트워크',
         '3D Rendering': '3D 렌더링',
         'Real Photo': '실사 사진',
@@ -545,7 +590,7 @@ export default function App() {
         'Top View': '톱 뷰',
         'Isometric': '아이소메트릭'
       },
-      forging: "이미지와 프롬프트 생성 중...",
+      forging: "이미지 생성 중...",
       upgrade: "업그레이드",
       proOnly: "Pro 전용 기능",
       proOnlyDesc: "이 기능은 Pro 요금제에서만 사용 가능합니다.",
@@ -600,9 +645,12 @@ export default function App() {
       title: 'CONCEPT',
       key: 'concept',
       options: [
-        { label: 'Minimalist' as StyleOption, icon: Sparkles, desc: lang === 'ko' ? '단순함과 여백의 미' : 'Simplicity and whitespace' },
-        { label: 'Geometric' as StyleOption, icon: Layout, desc: lang === 'ko' ? '수치적 질서와 기하학적 조형' : 'Numerical order and geometric shapes' },
-        { label: 'Detailism' as StyleOption, icon: Zap, desc: lang === 'ko' ? '섬세하고 풍부한 디테일 묘사' : 'Intricate and rich detail description' },
+        { label: 'Minimalism' as StyleOption, icon: Sparkles, desc: lang === 'ko' ? '비움의 미학' : 'Aesthetics of emptiness' },
+        { label: 'Artistic' as StyleOption, icon: Palette, desc: lang === 'ko' ? '예술적인 표현' : 'Artistic expression' },
+        { label: 'Geometry' as StyleOption, icon: Layout, desc: lang === 'ko' ? '기하학적 조형' : 'Geometric form' },
+        { label: 'Abstract' as StyleOption, icon: Zap, desc: lang === 'ko' ? '추상적인 형태' : 'Abstract form' },
+        { label: 'Futuristic' as StyleOption, icon: Wind, desc: lang === 'ko' ? '미래지향적 감각' : 'Futuristic sense' },
+        { label: 'Experimental' as StyleOption, icon: Activity, desc: lang === 'ko' ? '실험적인 시도' : 'Experimental attempt' },
       ]
     },
     {
@@ -896,8 +944,8 @@ export default function App() {
             else if (customObj) setCustomColor(customObj);
             
             // Set selected options from expanded analysis
-            if (analysis.selectedOptions && Array.from(analysis.selectedOptions).length > 0) {
-              setSelectedOptions(analysis.selectedOptions);
+            if (analysis.selectedOptions && Array.isArray(analysis.selectedOptions) && analysis.selectedOptions.length > 0) {
+              setSelectedOptions(analysis.selectedOptions as StyleOption[]);
             }
           }
         } catch (error) {
@@ -922,6 +970,15 @@ export default function App() {
 
   const handleGenerateAll = async () => {
     if (!idea.trim()) return;
+
+    // Check for API Key if using paid models
+    if (window.aistudio) {
+      const hasKey = await window.aistudio.hasSelectedApiKey();
+      if (!hasKey) {
+        await window.aistudio.openSelectKey();
+        // After opening, we assume success as per instructions
+      }
+    }
     
     // Check Daily Limit for FREE users
     if (userTier === 'FREE' && generationCount >= 3) {
@@ -1040,6 +1097,11 @@ export default function App() {
     setActiveTab('CREATE');
     setRestoreMessage(lang === 'ko' ? '이전 설정을 불러왔습니다' : 'Previous settings restored');
     setTimeout(() => setRestoreMessage(null), 3000);
+  };
+
+  const deleteHistory = (id: string) => {
+    setHistory(prev => prev.filter(log => log.id !== id));
+    if (selectedHistoryId === id) setSelectedHistoryId(null);
   };
 
   // Map colors to names if they are in the palette, otherwise keep hex
@@ -1274,7 +1336,7 @@ export default function App() {
                   onChange={(e) => setIdea(e.target.value)}
                   onFocus={() => setIsEditing(true)}
                   placeholder={t.placeholder}
-                  className="w-full min-h-[80px] px-20 py-7 rounded-[2.5rem] bg-white/5 backdrop-blur-2xl border border-white/20 focus:border-white/40 focus:bg-white/10 outline-none text-lg placeholder:text-white/40 resize-none text-white text-center shadow-2xl overflow-hidden transition-[border-color,background-color] duration-200"
+                  className="w-full min-h-[80px] px-20 py-7 rounded-[2.5rem] bg-white/15 backdrop-blur-2xl border border-white/30 focus:border-white/50 focus:bg-white/20 outline-none text-lg placeholder:text-white/60 resize-none text-white text-center shadow-2xl overflow-hidden transition-[border-color,background-color] duration-200"
                 />
                 
                 {/* Reference Image Icon Button */}
@@ -1875,61 +1937,70 @@ export default function App() {
           </AnimatePresence>
         </>
       ) : activeTab === 'HISTORY' ? (
-        /* History Tab Content */
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="w-full max-w-4xl mx-auto space-y-6"
-            >
-              {userTier === 'TEAM' && (
-                <div className="flex items-center justify-between p-6 rounded-[2rem] bg-[#0071e3]/10 border border-[#0071e3]/20 backdrop-blur-xl">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-2xl bg-[#0071e3]/20">
-                      <Users className="w-6 h-6 text-[#0071e3]" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-medium text-white tracking-tight">
-                        {lang === 'ko' ? '공동 HISTORY 작업실' : 'Shared TEAM Workspace'}
-                      </h4>
-                      <p className="text-[10px] text-white/40 tracking-widest">
-                        {lang === 'ko' ? '팀원들과 실시간으로 기록을 공유하고 있습니다' : 'Sharing history with team members in real-time'}
-                      </p>
-                    </div>
+        history.length === 0 ? (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="h-[70vh] flex flex-col items-center justify-center gap-10 text-center px-4"
+          >
+            <div className="w-20 h-20 rounded-full border border-white/20 flex items-center justify-center bg-white/5">
+              <Clock className="w-8 h-8 text-white/60" />
+            </div>
+            <div className="h-12 flex items-center justify-center">
+              <p className="text-sm text-white/90 font-light tracking-[0.1em] max-w-xs leading-relaxed">
+                {lang === 'ko' ? '아직 생성된 기록이 없습니다' : 'No history yet'}
+              </p>
+            </div>
+          </motion.div>
+        ) : (
+          /* History Tab Content */
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="w-full max-w-4xl mx-auto space-y-6"
+          >
+            {userTier === 'TEAM' && (
+              <div className="flex items-center justify-between p-6 rounded-[2rem] bg-[#0071e3]/10 border border-[#0071e3]/20 backdrop-blur-xl">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-2xl bg-[#0071e3]/20">
+                    <Users className="w-6 h-6 text-[#0071e3]" />
                   </div>
-                  <div className="flex -space-x-2">
-                    {[1, 2, 3].map(i => (
-                      <div key={i} className="w-8 h-8 rounded-full border-2 border-[#0a0a0a] bg-white/10 flex items-center justify-center text-[10px] font-bold text-white">
-                        {String.fromCharCode(64 + i)}
-                      </div>
-                    ))}
-                    <div className="w-8 h-8 rounded-full border-2 border-[#0a0a0a] bg-[#0071e3] flex items-center justify-center text-[10px] font-bold text-white">
-                      +5
-                    </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-white tracking-tight">
+                      {lang === 'ko' ? '공동 HISTORY 작업실' : 'Shared TEAM Workspace'}
+                    </h4>
+                    <p className="text-[10px] text-white/40 tracking-widest">
+                      {lang === 'ko' ? '팀원들과 실시간으로 기록을 공유하고 있습니다' : 'Sharing history with team members in real-time'}
+                    </p>
                   </div>
                 </div>
-              )}
+                <div className="flex -space-x-2">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="w-8 h-8 rounded-full border-2 border-[#0a0a0a] bg-white/10 flex items-center justify-center text-[10px] font-bold text-white">
+                      {String.fromCharCode(64 + i)}
+                    </div>
+                  ))}
+                  <div className="w-8 h-8 rounded-full border-2 border-[#0a0a0a] bg-[#0071e3] flex items-center justify-center text-[10px] font-bold text-white">
+                    +5
+                  </div>
+                </div>
+              </div>
+            )}
 
-              {history.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-32 text-white/80 space-y-4">
-                  <p className="text-sm tracking-widest font-light">
-                    {lang === 'ko' ? '아직 생성된 기록이 없습니다' : 'No history yet'}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-8">
-                  {history.map((log) => (
+            <div className="space-y-8">
+              {history.map((log) => (
                     <div 
                       key={log.id}
-                      className="group p-1 rounded-[2.5rem] bg-white/5 backdrop-blur-2xl border border-white/10 hover:border-white/20 transition-all overflow-hidden"
+                      className="group p-1 rounded-[2.5rem] bg-white/15 backdrop-blur-2xl border border-white/20 hover:border-white/30 transition-all overflow-hidden"
                     >
                       <div className="p-8 space-y-8">
                         {/* History Item Header */}
                         <div className="flex items-center justify-between gap-6">
                           <div className="flex items-center gap-4 shrink-0">
-                            <span className="px-3 py-1 rounded-lg bg-white/10 text-[10px] text-white/60 tracking-widest font-mono">
+                            <span className="px-3 py-1 rounded-lg bg-white/20 text-[10px] text-white/80 tracking-widest font-mono">
                               {log.id}
                             </span>
-                            <span className="text-[10px] text-white/40 tracking-widest uppercase">
+                            <span className="text-[10px] text-white/70 tracking-widest uppercase">
                               {log.date}
                             </span>
                           </div>
@@ -1945,9 +2016,9 @@ export default function App() {
                               ...log.bgColors.map(c => ({ label: 'BG', value: c })),
                               ...log.objColors.map(c => ({ label: 'OBJ', value: c }))
                             ].map((chip, i) => (
-                              <div key={i} className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 flex items-center gap-2 shrink-0 h-[32px]">
-                                <span className="text-[8px] text-white/30 uppercase tracking-tighter">{chip.label}</span>
-                                <span className="text-[10px] text-white/80 font-medium whitespace-nowrap">{chip.value}</span>
+                              <div key={i} className="px-3 py-1.5 rounded-full bg-white/15 border border-white/20 flex items-center gap-2 shrink-0 h-[32px]">
+                                <span className="text-[8px] text-white/50 uppercase tracking-tighter">{chip.label}</span>
+                                <span className="text-[10px] text-white/90 font-medium whitespace-nowrap">{chip.value}</span>
                               </div>
                             ))}
                           </div>
@@ -1963,8 +2034,18 @@ export default function App() {
                               {lang === 'ko' ? '사용하기' : 'USE'}
                             </button>
                             <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteHistory(log.id);
+                              }}
+                              className="p-2 rounded-xl bg-white/15 border border-white/25 text-white/60 hover:text-red-400 hover:bg-red-400/20 transition-all"
+                              title={lang === 'ko' ? '삭제' : 'Delete'}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <button
                               onClick={() => setSelectedHistoryId(selectedHistoryId === log.id ? null : log.id)}
-                              className="p-2 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white transition-all"
+                              className="p-2 rounded-xl bg-white/15 border border-white/25 text-white/60 hover:text-white transition-all"
                             >
                               <ChevronDown className={`w-4 h-4 transition-transform ${selectedHistoryId === log.id ? 'rotate-180' : ''}`} />
                             </button>
@@ -2045,15 +2126,15 @@ export default function App() {
                     </div>
                   ))}
                 </div>
-              )}
-            </motion.div>
+              </motion.div>
+            )
           ) : activeTab === 'MOODBOARD' ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="w-full"
             >
-              <Moodboard 
+            <Moodboard 
                 history={history} 
                 currentIdea={idea}
                 selectedOptions={selectedOptions}
@@ -2062,6 +2143,10 @@ export default function App() {
                 selectedCamera={selectedCamera}
                 lang={lang} 
                 triggerUpdate={moodboardTrigger}
+                images={moodboardImages}
+                searchQuery={moodboardQuery}
+                loading={moodboardLoading}
+                onFetch={handleFetchMoodboard}
                 onUseStyle={(keywords) => {
                   setIdea(keywords);
                   setActiveTab('CREATE');

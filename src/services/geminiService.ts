@@ -56,9 +56,12 @@ export interface PromptExpansion {
 
 export type StyleOption = 
   // Step 1: Concept
-  | 'Minimalist'
-  | 'Geometric'
-  | 'Detailism'
+  | 'Minimalism'
+  | 'Artistic'
+  | 'Geometry'
+  | 'Abstract'
+  | 'Futuristic'
+  | 'Experimental'
   // Step 2: Visual Style
   | '2D Artwork'
   | '3D Rendering'
@@ -150,7 +153,8 @@ export async function generateWallpaper(
   aspectRatio: "1:1" | "3:4" | "4:3" | "9:16" | "16:9" = "16:9",
   preRefinedPrompt?: string
 ): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
+  // Create a fresh instance to use the latest API key from the dialog
+  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
   const ai = new GoogleGenAI({ apiKey });
   
   let refinedPrompt = preRefinedPrompt;
@@ -163,7 +167,7 @@ export async function generateWallpaper(
 사용자의 아이디어와 선택된 5단계 스타일 옵션을 바탕으로, 'Gemini 2.5 Flash Image (Nano Banana)' 모델이 가장 선호하는 고퀄리티 영문 프롬프트를 생성해줘.
 
 [5단계 시스템 구성]
-1. CONCEPT: Minimalist, Geometric, Detailism
+1. CONCEPT: Minimalism, Artistic, Geometry, Abstract, Futuristic, Experimental
 2. VISUAL STYLE: 2D Artwork, 3D Rendering, Real Photo, Icon
 3. STYLE/SUBJECT/STRUCTURE/ICON STYLE: Vector, Line Art, Gouache, Pixel Art, Isometric, Soft Volume, Inflatable, Geometric Abstract, Wireframe, Person, Landscape, Product, Architecture, Out of Focus (f/1.8), Pan Focus (f/11), Fisheye Lens, Macro, Film Grain, Line, Solid, Realism, 3D Clay, Glass, Isometric, Hand-drawn
 4. FINISH/SHOT TYPE/MATERIAL/ICON FINISH: Halftone, Noise, Paper Texture, Flat Color, Matte Clay, Transparent Glass, Reflective Metal, Paper, Emissive, Close-up, Medium Shot, Full Shot, Panorama, Long Exposure, Gradient, Soft Shadow
@@ -177,10 +181,10 @@ export async function generateWallpaper(
    - 'Real Photo'에서 'Close-up' 계열과 'Low Angle'이 함께 선택되면 "A majestic low-angle close-up shot"과 같이 웅장한 느낌을 강조해.
    - 2D/3D에서도 선택된 'Camera Angle'이 구도와 원근감에 확실히 반영되도록 해.
 5. FINISH 다중 선택: Step 4(FINISH)에서 여러 질감이 선택된 경우, 이를 자연스럽게 혼합하여 묘사해.
-6. 가중치 부여: 주요 키워드는 '(Keyword:1.5)' 형식으로 표현하고, 'Detailism' 선택 시 세부 묘사 키워드를 최우선으로 배치해.
+6. 가중치 부여: 주요 키워드는 '(Keyword:1.5)' 형식으로 표현하고, 'Experimental'이나 'Artistic' 선택 시 세부 묘사 키워드를 최우선으로 배치해.
 
 [예시]
-[Detailism] + [Real Photo] + [Architecture] + [Full Shot] + [Low Angle] + [Mist] 선택 시 -> "A majestic low-angle full shot of ornate architecture shrouded in soft mist, hyper-detailed, (Detailism:1.5)"와 같이 구성.
+[Futuristic] + [Real Photo] + [Architecture] + [Full Shot] + [Low Angle] + [Mist] 선택 시 -> "A majestic low-angle full shot of futuristic architecture shrouded in soft mist, hyper-detailed, (Futuristic:1.5)"와 같이 구성.
 
 [출력 형식]
 오직 생성된 영문 프롬프트 문자열만 출력해. 다른 설명은 생략해.
@@ -205,14 +209,19 @@ export async function generateWallpaper(
       },
     }));
 
-    refinedPrompt = promptResponse.text || userIdea;
+    if (!promptResponse) {
+      console.warn("Gemini Prompt Generation: No response returned");
+      refinedPrompt = userIdea;
+    } else {
+      refinedPrompt = promptResponse.text || userIdea;
+    }
   }
   
   console.log("Image Prompt to use:", refinedPrompt);
 
-  // 2. Generate the image using the refined prompt with Gemini 2.5 Flash Image (Free Tier)
+  // 2. Generate the image using the refined prompt with Gemini 3.1 Flash Image (Paid Tier / High Quality)
   const response = await withRetry(() => ai.models.generateContent({
-    model: 'gemini-2.5-flash-image',
+    model: 'gemini-3.1-flash-image-preview',
     contents: {
       parts: [
         {
@@ -223,22 +232,37 @@ export async function generateWallpaper(
     config: {
       imageConfig: {
         aspectRatio: aspectRatio,
+        imageSize: "1K"
       },
     },
   }));
 
-  for (const part of response.candidates?.[0]?.content?.parts || []) {
+  if (!response || !response.candidates || response.candidates.length === 0) {
+    console.error("Gemini Image Generation: No response or candidates returned", response);
+    throw new Error("이미지 생성에 실패했습니다. (No response)");
+  }
+
+  const candidate = response.candidates[0];
+  if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+    console.warn("Gemini Image Generation: Finish reason is not STOP", candidate.finishReason);
+    if (candidate.finishReason === 'SAFETY') {
+      throw new Error("안전 정책에 의해 이미지가 생성되지 않았습니다. 다른 키워드로 시도해주세요.");
+    }
+  }
+
+  for (const part of candidate.content?.parts || []) {
     if (part.inlineData) {
       const base64EncodeString: string = part.inlineData.data;
       return `data:image/png;base64,${base64EncodeString}`;
     }
   }
   
+  console.error("Gemini Image Generation: No inlineData found in parts", candidate.content?.parts);
   throw new Error("No image generated");
 }
 
 export async function analyzeImage(image: string): Promise<ImageAnalysis> {
-  const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
+  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
   const ai = new GoogleGenAI({ apiKey });
   const model = "gemini-3-flash-preview";
 
@@ -252,7 +276,7 @@ export async function analyzeImage(image: string): Promise<ImageAnalysis> {
 [Categories & Allowed Values]
 1. camera: High Angle, Eye Level, Low Angle, Top View, Isometric
 2. ratio: 1:1, 4:5, 16:9, 9:16, 3:2, 2:3
-3. concept: Minimalist, Geometric, Detailism (이미지의 전반적인 분위기에 따라 선택)
+3. concept: Minimalism, Artistic, Geometry, Abstract, Futuristic, Experimental (이미지의 전반적인 분위기에 따라 선택)
 4. dimension: 2D Artwork, 3D Rendering, Real Photo, Icon (이미지의 형식을 선택)
 5. subStyle: 
    - 2D일 때: Vector, Line Art, Gouache, Pixel Art
@@ -317,7 +341,14 @@ export async function analyzeImage(image: string): Promise<ImageAnalysis> {
     }
   }));
 
-  return JSON.parse(response.text || "{}") as ImageAnalysis;
+  try {
+    const text = response.text;
+    if (!text) return { camera: 'Eye Level', ratio: '1:1', selectedOptions: [], bgColors: [], objColors: [] };
+    return JSON.parse(text) as ImageAnalysis;
+  } catch (e) {
+    console.error("Failed to parse analysis JSON", e);
+    return { camera: 'Eye Level', ratio: '1:1', selectedOptions: [], bgColors: [], objColors: [] };
+  }
 }
 
 export async function expandPrompt(
@@ -331,7 +362,7 @@ export async function expandPrompt(
   image?: string // Base64 image data
 ): Promise<PromptExpansion> {
   // AI Studio 환경과 일반 Vite/Vercel 환경 모두 지원
-  const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
+  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
   const ai = new GoogleGenAI({ apiKey });
   const model = "gemini-3-flash-preview";
   
@@ -339,7 +370,7 @@ export async function expandPrompt(
 너는 **'Prompt Creator'**야. 사용자의 아이디어를 분석하여 Soft & Fun 감성이 담긴 최적의 프롬프트를 생성하고 디자인 인사이트를 제공하는 것이 네 역할이야.
 
 [5단계 스타일 시스템]
-1. CONCEPT: Minimalist, Geometric, Detailism
+1. CONCEPT: Minimalism, Artistic, Geometry, Abstract, Futuristic, Experimental
 2. VISUAL STYLE: 2D Artwork, 3D Rendering, Real Photo, Icon
 3. STYLE/SUBJECT/STRUCTURE/ICON STYLE: Vector, Line Art, Gouache, Pixel Art, Isometric, Soft Volume, Inflatable, Geometric Abstract, Wireframe, Person, Landscape, Product, Architecture, Out of Focus (f/1.8), Pan Focus (f/11), Fisheye Lens, Macro, Film Grain, Line, Solid, Realism, 3D Clay, Glass, Isometric, Hand-drawn
 4. FINISH/SHOT TYPE/MATERIAL/ICON FINISH: Halftone, Noise, Paper Texture, Flat Color, Matte Clay, Transparent Glass, Reflective Metal, Paper, Emissive, Close-up, Medium Shot, Full Shot, Panorama, Long Exposure, Gradient, Soft Shadow
@@ -354,9 +385,9 @@ export async function expandPrompt(
    - Design Intent & Designer Comment: 사용자가 선택한 언어(${lang === 'ko' ? '한국어' : '영어'})로 작성할 것.
 
 [Insight Mapping Rules]
-- 'Detailism'은 'Aesthetic'과 'Complexity' 수치를 높임.
+- 'Artistic'이나 'Experimental'은 'Aesthetic'과 'Complexity' 수치를 높임.
 - '3D Rendering'이나 'Real Photo'는 'Depth' 수치를 높임.
-- 'Minimalist'는 'Minimalism' 수치를 높임.
+- 'Minimalism'은 'Minimalism' 수치를 높임.
 
 [Output Format]
 반드시 JSON 형식으로 응답할 것.

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ExternalLink, Sparkles, RefreshCw, ArrowRight, ImageOff } from 'lucide-react';
-import { searchUnsplashImages, UnsplashImage, getKeywordsFromHistory, mapToEnglish } from '../services/unsplashService';
+import { searchImages, ImageResult, getMoodboardQuery } from '../services/unsplashService';
 
 interface MoodboardProps {
   history: any[];
@@ -13,10 +13,15 @@ interface MoodboardProps {
   onUseStyle: (keywords: string) => void;
   lang: 'en' | 'ko';
   triggerUpdate?: number;
+  hasGenerated?: boolean;
+  images: ImageResult[];
+  searchQuery: string;
+  loading: boolean;
+  onFetch: (query: string, force?: boolean) => void;
 }
 
 interface ImageCardProps {
-  img: UnsplashImage;
+  img: ImageResult;
   searchQuery: string;
   onUseStyle: (k: string) => void;
   lang: string;
@@ -32,7 +37,7 @@ const ImageCard: React.FC<ImageCardProps> = ({ img, searchQuery, onUseStyle, lan
   return (
     <motion.div
       layout
-      className="group relative rounded-[2rem] overflow-hidden bg-zinc-900 border border-white/5 shadow-2xl aspect-[3/4] w-full"
+      className="group relative rounded-[2rem] overflow-hidden bg-zinc-900 border border-white/10 shadow-2xl aspect-[3/4] w-full"
     >
       {!error ? (
         <img 
@@ -48,6 +53,13 @@ const ImageCard: React.FC<ImageCardProps> = ({ img, searchQuery, onUseStyle, lan
           <ImageOff className="w-8 h-8 text-white/5" />
         </div>
       )}
+
+      {/* Source Badge */}
+      <div className="absolute top-4 left-4 z-20">
+        <div className="px-3 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/10">
+          <span className="text-[8px] font-mono tracking-widest text-white/80 uppercase">{img.source}</span>
+        </div>
+      </div>
 
       {/* Loading Indicator */}
       {!loaded && !error && (
@@ -79,156 +91,93 @@ export const Moodboard: React.FC<MoodboardProps> = ({
   selectedCamera, 
   onUseStyle, 
   lang,
-  triggerUpdate
+  triggerUpdate,
+  hasGenerated = false,
+  images,
+  searchQuery,
+  loading,
+  onFetch
 }) => {
-  const [images, setImages] = useState<UnsplashImage[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-
   const mainColor = selectedObjectColors?.[0] || (history.length > 0 && history[0].objColors?.[0]) || '#FF6321';
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    const savedData = localStorage.getItem('moodboard_cache');
-    if (savedData) {
-      try {
-        const { images: savedImages, query: savedQuery } = JSON.parse(savedData);
-        setImages(savedImages);
-        setSearchQuery(savedQuery);
-      } catch (e) {
-        console.error("Failed to load moodboard cache", e);
-      }
-    }
-  }, []);
-
   const analyzeDNA = () => {
-    const dna: string[] = [];
-    
-    // 1. Concept (Priority) - 1:1 Matching
-    if (selectedOptions.includes('Minimalist')) dna.push("Minimalist Architecture");
-    if (selectedOptions.includes('Geometric')) dna.push("Geometric Brutalism");
-    if (selectedOptions.includes('Detailism')) dna.push("Intricate Detail Design");
+    // Prioritize current selections if they exist, otherwise fallback to history
+    const sourceOptions = selectedOptions.length > 0 ? selectedOptions : (history.length > 0 ? history[0].options : []);
+    const sourceIdea = selectedOptions.length > 0 ? currentIdea : (history.length > 0 ? history[0].subject : "");
 
-    // 2. Visual Style & Texture Filter
-    if (selectedOptions.includes('3D Rendering')) {
-      dna.push("Cinema4D,Octane Render,Abstract 3D Shape");
-    } else if (selectedOptions.includes('Real Photo')) {
-      dna.push("Architectural Photography,High-end Design");
-    } else if (selectedOptions.includes('2D Artwork')) {
-      dna.push("Graphic Design,Flat Illustration");
-    } else if (selectedOptions.includes('Icon')) {
-      dna.push("Minimalist Icon Design,Vector Symbol");
-    }
+    if (sourceOptions.length === 0 && !sourceIdea) return "";
 
-    // 3. Shape/Geometry Injection
-    const shapeOptions = ['Soft Volume', 'Inflatable', 'Geometric Abstract', 'Wireframe', 'Circle', 'Square', 'Organic Curve'];
-    selectedOptions.forEach(opt => {
-      if (shapeOptions.includes(opt)) dna.push(opt);
-    });
-
-    // 4. Lighting & Environment Sync
-    const lightingOptions = ['Natural Light', 'Cinematic Neon', 'Soft White', 'Dark Mood', 'Golden Hour', 'Blue Hour', 'Studio'];
-    selectedOptions.forEach(opt => {
-      if (lightingOptions.includes(opt)) dna.push(opt + " lighting");
-    });
-
-    // 5. Background Color Sync
-    if (selectedBgColors.length > 0) {
-      dna.push(selectedBgColors[0] + " background");
-    }
-
-    // 6. Current Idea Context
-    if (currentIdea && currentIdea.trim()) {
-      dna.push(currentIdea.trim());
-    }
-
-    return dna.join(',');
+    return getMoodboardQuery(sourceOptions, sourceIdea);
   };
 
-  const fetchMoodboard = async () => {
+  const handleManualRefresh = () => {
     const query = analyzeDNA();
-    // If no query components at all, don't search (prevents random results)
-    if (!query || query.trim() === "") {
-      setImages([]);
-      return;
-    }
-
-    setLoading(true);
-    setSearchQuery(query);
-    
-    const results = await searchUnsplashImages(query);
-    setImages(results);
-    setLoading(false);
-
-    // Save to localStorage
-    localStorage.setItem('moodboard_cache', JSON.stringify({
-      images: results,
-      query: query,
-      timestamp: Date.now()
-    }));
+    onFetch(query, true);
   };
 
-  // ONLY update when triggerUpdate changes (explicitly triggered from App.tsx)
+  // Sync with history/generation state AND current selections
   useEffect(() => {
-    if (triggerUpdate) {
-      fetchMoodboard();
-    }
-  }, [triggerUpdate]);
+    const query = analyzeDNA();
+    onFetch(query);
+  }, [triggerUpdate, history[0]?.id, selectedOptions.join(',')]);
 
   const t = {
     en: {
-      title: "Design DNA Moodboard",
-      subtitle: "Aesthetic references analyzed from your design concepts",
-      loading: "Analyzing DNA...",
-      empty: "Inspiration will fill up once you create your first design.",
-      refresh: "Refresh"
+      title: "Design Archive",
+      subtitle: "A cumulative collection of aesthetic references from your design journey",
+      loading: "Archiving DNA...",
+      empty: "Your design archive will fill up once you start setting your design or create your first one.",
+      refresh: "Add More"
     },
     ko: {
-      title: "디자인 DNA 무드보드",
-      subtitle: "당신의 디자인 컨셉을 분석한 심미적 레퍼런스",
-      loading: "DNA 분석 중...",
-      empty: "첫 디자인을 생성하면 영감이 채워집니다.",
-      refresh: "새로고침"
+      title: "디자인 아카이브",
+      subtitle: "당신의 디자인 여정에서 수집된 심미적 레퍼런스 누적 컬렉션",
+      loading: "아카이브 분석 중...",
+      empty: "디자인 설정을 시작하거나 첫 생성을 완료하면 아카이브가 채워집니다.",
+      refresh: "더 불러오기"
     }
   }[lang];
 
-  // STRICT EMPTY STATE: If history is empty, show empty state regardless of cache
-  const isEmpty = history.length === 0;
+  // STRICT EMPTY STATE: 
+  // Show empty if no history AND no active selections.
+  const isEmpty = history.length === 0 && selectedOptions.length === 0;
 
   if (isEmpty) {
     return (
-      <div className="h-[70vh] flex flex-col items-center justify-center gap-8 text-center px-4">
-        <div className="w-16 h-16 rounded-full border border-white/10 flex items-center justify-center">
-          <Sparkles className="w-6 h-6 text-white/20" />
+      <div className="h-[70vh] flex flex-col items-center justify-center gap-10 text-center px-4">
+        <div className="w-20 h-20 rounded-full border border-white/20 flex items-center justify-center bg-white/5">
+          <Sparkles className="w-8 h-8 text-white/60" />
         </div>
-        <p className="text-sm text-white/60 font-light tracking-[0.05em] max-w-xs leading-relaxed">
-          {t.empty}
-        </p>
+        <div className="h-12 flex items-center justify-center">
+          <p className="text-sm text-white/90 font-light tracking-[0.1em] max-w-xs leading-relaxed">
+            {t.empty}
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-16 p-4 md:p-12 max-w-7xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-white/10 pb-16">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-white/20 pb-16">
         <div className="space-y-6">
           <div className="flex items-center gap-3">
-            <div className="w-1.5 h-1.5 rounded-full bg-white/60" />
-            <span className="text-[10px] font-mono tracking-[0.4em] text-white/60 uppercase">Aesthetic Intelligence</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-white/80" />
+            <span className="text-[10px] font-mono tracking-[0.4em] text-white/80 uppercase">Aesthetic Intelligence</span>
           </div>
           <h2 className="text-5xl font-sans font-medium tracking-tight text-white">
             {t.title}
           </h2>
-          <p className="text-sm text-white/50 font-light max-w-md leading-relaxed">
+          <p className="text-sm text-white/70 font-light max-w-md leading-relaxed">
             {t.subtitle}
           </p>
         </div>
         <button 
-          onClick={fetchMoodboard}
+          onClick={handleManualRefresh}
           disabled={loading}
-          className="group flex items-center gap-4 px-8 py-4 rounded-full bg-white/10 border border-white/20 text-[10px] font-mono tracking-widest text-white/70 hover:text-white hover:bg-white/20 transition-all disabled:opacity-50"
+          className="group flex items-center gap-4 px-8 py-4 rounded-full bg-white/15 border border-white/30 text-[10px] font-mono tracking-widest text-white hover:bg-white/25 transition-all disabled:opacity-50"
         >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'opacity-20' : ''} transition-opacity`} />
+          <RefreshCw className={`w-4 h-4 ${loading ? 'opacity-40' : ''} transition-opacity`} />
           {t.refresh.toUpperCase()}
         </button>
       </div>
@@ -238,11 +187,11 @@ export const Moodboard: React.FC<MoodboardProps> = ({
           <p className="text-[10px] text-white/20 font-mono tracking-[0.3em] uppercase animate-pulse">{t.loading}</p>
         </div>
       ) : images.length === 0 ? (
-        <div className="h-[50vh] flex flex-col items-center justify-center gap-6 border border-dashed border-white/5 rounded-[3rem]">
-          <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-4">
-            <Sparkles className="w-5 h-5 text-white/20" />
+        <div className="h-[50vh] flex flex-col items-center justify-center gap-6 border border-dashed border-white/10 rounded-[3rem]">
+          <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-4">
+            <Sparkles className="w-5 h-5 text-white/40" />
           </div>
-          <p className="text-sm text-white/20 font-light tracking-wide">디자인을 생성하여 영감을 얻으세요</p>
+          <p className="text-sm text-white/40 font-light tracking-wide">디자인을 생성하여 영감을 얻으세요</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
