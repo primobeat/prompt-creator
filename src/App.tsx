@@ -423,7 +423,7 @@ export default function App() {
         'Top View': 'Top View',
         'Isometric': 'Isometric'
       },
-      forging: "Generating image...",
+      forging: "Generating image and prompt",
       upgrade: "Upgrade",
       proOnly: "Pro Exclusive",
       proOnlyDesc: "This feature is only available for Pro users.",
@@ -590,7 +590,7 @@ export default function App() {
         'Top View': '톱 뷰',
         'Isometric': '아이소메트릭'
       },
-      forging: "이미지 생성 중...",
+      forging: "이미지와 프롬프트 생성 중",
       upgrade: "업그레이드",
       proOnly: "Pro 전용 기능",
       proOnlyDesc: "이 기능은 Pro 요금제에서만 사용 가능합니다.",

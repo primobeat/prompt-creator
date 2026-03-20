@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ExternalLink, Sparkles, RefreshCw, ArrowRight, ImageOff } from 'lucide-react';
+import { ExternalLink, Sparkles, RefreshCw, ArrowRight, ImageOff, X } from 'lucide-react';
 import { searchImages, ImageResult, getMoodboardQuery } from '../services/unsplashService';
 
 interface MoodboardProps {
@@ -24,20 +24,27 @@ interface ImageCardProps {
   img: ImageResult;
   searchQuery: string;
   onUseStyle: (k: string) => void;
+  onEnlarge: (img: ImageResult) => void;
   lang: string;
   mainColor: string;
+  selectedOptions: string[];
 }
 
-const ImageCard: React.FC<ImageCardProps> = ({ img, searchQuery, onUseStyle, lang, mainColor }) => {
+const ImageCard: React.FC<ImageCardProps> = ({ img, searchQuery, onUseStyle, onEnlarge, lang, mainColor, selectedOptions }) => {
   const [error, setError] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   if (error) return null;
 
+  const displayKeywords = selectedOptions.length > 0 
+    ? selectedOptions.slice(0, 2).join(' + ') + (selectedOptions.length > 2 ? '...' : '')
+    : img.source;
+
   return (
     <motion.div
       layout
-      className="group relative rounded-[2rem] overflow-hidden bg-zinc-900 border border-white/10 shadow-2xl aspect-[3/4] w-full"
+      className="group relative rounded-[2rem] overflow-hidden bg-zinc-900 border border-white/10 shadow-2xl aspect-[3/4] w-full cursor-zoom-in"
+      onClick={() => onEnlarge(img)}
     >
       {!error ? (
         <img 
@@ -54,10 +61,10 @@ const ImageCard: React.FC<ImageCardProps> = ({ img, searchQuery, onUseStyle, lan
         </div>
       )}
 
-      {/* Source Badge */}
+      {/* Source Badge -> Concept Keywords Badge */}
       <div className="absolute top-4 left-4 z-20">
-        <div className="px-3 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/10">
-          <span className="text-[8px] font-mono tracking-widest text-white/80 uppercase">{img.source}</span>
+        <div className="px-3 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/10 max-w-[150px] truncate">
+          <span className="text-[8px] font-mono tracking-widest text-white/80 uppercase whitespace-nowrap">{displayKeywords}</span>
         </div>
       </div>
 
@@ -71,7 +78,10 @@ const ImageCard: React.FC<ImageCardProps> = ({ img, searchQuery, onUseStyle, lan
       {/* Minimal Action Overlay - Only Button on Hover */}
       <div className={`absolute inset-0 transition-opacity duration-300 flex items-start justify-end p-6 ${loaded ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'}`}>
         <button
-          onClick={() => onUseStyle(img.alt_description)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onUseStyle(img.alt_description);
+          }}
           className="p-4 rounded-full bg-white text-black hover:scale-110 transition-transform shadow-2xl"
           title="Use this style"
         >
@@ -98,6 +108,7 @@ export const Moodboard: React.FC<MoodboardProps> = ({
   loading,
   onFetch
 }) => {
+  const [enlargedImage, setEnlargedImage] = useState<ImageResult | null>(null);
   const mainColor = selectedObjectColors?.[0] || (history.length > 0 && history[0].objColors?.[0]) || '#FF6321';
 
   const analyzeDNA = () => {
@@ -202,13 +213,69 @@ export const Moodboard: React.FC<MoodboardProps> = ({
                 img={img} 
                 searchQuery={searchQuery} 
                 onUseStyle={onUseStyle} 
+                onEnlarge={setEnlargedImage}
                 lang={lang} 
                 mainColor={mainColor}
+                selectedOptions={selectedOptions}
               />
             ))}
           </AnimatePresence>
         </div>
       )}
+
+      {/* Enlargement Modal */}
+      <AnimatePresence>
+        {enlargedImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-12 bg-black/90 backdrop-blur-xl"
+            onClick={() => setEnlargedImage(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative max-w-5xl w-full max-h-full flex flex-col items-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="relative group">
+                <img 
+                  src={enlargedImage.urls.regular} 
+                  alt={enlargedImage.alt_description}
+                  className="max-w-full max-h-[80vh] object-contain rounded-3xl shadow-2xl border border-white/10"
+                  referrerPolicy="no-referrer"
+                />
+                
+                {/* Top Right Actions */}
+                <div className="absolute top-6 right-6 flex items-center gap-3">
+                  <button
+                    onClick={() => onUseStyle(enlargedImage.alt_description)}
+                    className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center hover:scale-110 transition-transform shadow-2xl"
+                    title={lang === 'ko' ? '이 스타일 사용' : 'USE THIS STYLE'}
+                  >
+                    <Sparkles className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => setEnlargedImage(null)}
+                    className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white flex items-center justify-center hover:bg-black/60 transition-all"
+                    title={lang === 'ko' ? '닫기' : 'CLOSE'}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-6 text-center">
+                <p className="text-white/60 text-[11px] font-mono tracking-widest uppercase max-w-2xl leading-relaxed">
+                  {enlargedImage.alt_description}
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

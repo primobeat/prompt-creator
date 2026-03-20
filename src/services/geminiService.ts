@@ -219,30 +219,77 @@ export async function generateWallpaper(
   
   console.log("Image Prompt to use:", refinedPrompt);
 
-  // 2. Generate the image using the refined prompt with Gemini 3.1 Flash Image (Paid Tier / High Quality)
-  const response = await withRetry(() => ai.models.generateContent({
-    model: 'gemini-3.1-flash-image-preview',
-    contents: {
-      parts: [
-        {
-          text: refinedPrompt,
-        },
-      ],
-    },
-    config: {
-      imageConfig: {
-        aspectRatio: aspectRatio,
-        imageSize: "1K"
+  // 2. Generate the image using the refined prompt
+  try {
+    // Try Gemini 3.1 Flash Image (Paid Tier / High Quality) first
+    const response = await withRetry(() => ai.models.generateContent({
+      model: 'gemini-3.1-flash-image-preview',
+      contents: {
+        parts: [
+          {
+            text: refinedPrompt,
+          },
+        ],
       },
-    },
-  }));
+      config: {
+        imageConfig: {
+          aspectRatio: aspectRatio,
+          imageSize: "1K"
+        },
+      },
+    }));
 
+    return extractImageFromResponse(response);
+  } catch (err: any) {
+    console.warn("Primary image model (3.1) failed, attempting fallback to gemini-2.5-flash-image:", err);
+    
+    // Fallback to gemini-2.5-flash-image if permission denied (no paid key) or quota exceeded
+    const isAuthOrQuotaError = 
+      err.message?.toLowerCase().includes('permission') || 
+      err.message?.toLowerCase().includes('quota') || 
+      err.message?.toLowerCase().includes('429') || 
+      err.message?.toLowerCase().includes('403') ||
+      err.message?.toLowerCase().includes('resource_exhausted');
+
+    if (isAuthOrQuotaError) {
+      try {
+        const fallbackResponse = await withRetry(() => ai.models.generateContent({
+          model: 'gemini-2.5-flash-image',
+          contents: {
+            parts: [
+              {
+                text: refinedPrompt,
+              },
+            ],
+          },
+          config: {
+            imageConfig: {
+              aspectRatio: aspectRatio,
+              // Note: gemini-2.5-flash-image does not support imageSize parameter
+            },
+          },
+        }));
+        return extractImageFromResponse(fallbackResponse);
+      } catch (fallbackErr: any) {
+        console.error("Fallback image generation also failed:", fallbackErr);
+        throw fallbackErr;
+      }
+    }
+    throw err;
+  }
+}
+
+/**
+ * Helper to extract base64 image data from Gemini response
+ */
+function extractImageFromResponse(response: any): string {
   if (!response || !response.candidates || response.candidates.length === 0) {
     console.error("Gemini Image Generation: No response or candidates returned", response);
     throw new Error("이미지 생성에 실패했습니다. (No response)");
   }
 
   const candidate = response.candidates[0];
+  
   if (candidate.finishReason && candidate.finishReason !== 'STOP') {
     console.warn("Gemini Image Generation: Finish reason is not STOP", candidate.finishReason);
     if (candidate.finishReason === 'SAFETY') {
@@ -258,7 +305,7 @@ export async function generateWallpaper(
   }
   
   console.error("Gemini Image Generation: No inlineData found in parts", candidate.content?.parts);
-  throw new Error("No image generated");
+  throw new Error("이미지 데이터를 찾을 수 없습니다.");
 }
 
 export async function analyzeImage(image: string): Promise<ImageAnalysis> {
