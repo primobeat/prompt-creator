@@ -38,7 +38,7 @@ const ImageCard: React.FC<ImageCardProps> = ({ img, searchQuery, onUseStyle, onE
 
   const displayKeywords = selectedOptions.length > 0 
     ? selectedOptions.slice(0, 2).join(' + ') + (selectedOptions.length > 2 ? '...' : '')
-    : img.source;
+    : img.alt_description.replace(' aesthetic reference', '').charAt(0).toUpperCase() + img.alt_description.replace(' aesthetic reference', '').slice(1);
 
   return (
     <motion.div
@@ -74,20 +74,6 @@ const ImageCard: React.FC<ImageCardProps> = ({ img, searchQuery, onUseStyle, onE
           <div className="w-10 h-10 rounded-full border border-white/10 border-t-white/40 animate-spin" />
         </div>
       )}
-      
-      {/* Minimal Action Overlay - Only Button on Hover */}
-      <div className={`absolute inset-0 transition-opacity duration-300 flex items-start justify-end p-6 ${loaded ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'}`}>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onUseStyle(img.alt_description);
-          }}
-          className="p-4 rounded-full bg-white text-black hover:scale-110 transition-transform shadow-2xl"
-          title="Use this style"
-        >
-          <Sparkles className="w-5 h-5" />
-        </button>
-      </div>
     </motion.div>
   );
 };
