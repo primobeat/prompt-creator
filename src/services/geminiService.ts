@@ -153,8 +153,22 @@ export async function generateWallpaper(
   aspectRatio: "1:1" | "3:4" | "4:3" | "9:16" | "16:9" = "16:9",
   preRefinedPrompt?: string
 ): Promise<string> {
-  // Create a fresh instance to use the latest API key from the dialog
-  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
+  // AI Studio 환경과 일반 Vite/Vercel 환경 모두 지원
+  let apiKey = "";
+  try {
+    // Vite의 define 또는 import.meta.env를 통해 주입된 키를 순차적으로 확인
+    apiKey = import.meta.env.VITE_GEMINI_API_KEY || 
+             process.env.GEMINI_API_KEY || 
+             process.env.API_KEY || 
+             "";
+    
+    if (!apiKey) {
+      console.warn("Gemini API Key not found in environment variables.");
+    }
+  } catch (e) {
+    console.warn("Error accessing environment variables:", e);
+  }
+  
   const ai = new GoogleGenAI({ apiKey });
   
   let refinedPrompt = preRefinedPrompt;
@@ -309,7 +323,16 @@ function extractImageFromResponse(response: any): string {
 }
 
 export async function analyzeImage(image: string): Promise<ImageAnalysis> {
-  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
+  let apiKey = "";
+  try {
+    apiKey = import.meta.env.VITE_GEMINI_API_KEY || 
+             process.env.GEMINI_API_KEY || 
+             process.env.API_KEY || 
+             "";
+  } catch (e) {
+    apiKey = "";
+  }
+  
   const ai = new GoogleGenAI({ apiKey });
   const model = "gemini-3-flash-preview";
 
@@ -408,8 +431,16 @@ export async function expandPrompt(
   lang: 'en' | 'ko' = 'ko',
   image?: string // Base64 image data
 ): Promise<PromptExpansion> {
-  // AI Studio 환경과 일반 Vite/Vercel 환경 모두 지원
-  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
+  let apiKey = "";
+  try {
+    apiKey = import.meta.env.VITE_GEMINI_API_KEY || 
+             process.env.GEMINI_API_KEY || 
+             process.env.API_KEY || 
+             "";
+  } catch (e) {
+    apiKey = "";
+  }
+  
   const ai = new GoogleGenAI({ apiKey });
   const model = "gemini-3-flash-preview";
   

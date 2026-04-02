@@ -160,7 +160,51 @@ const LoadingSequence = () => {
   );
 };
 
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-center">
+          <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mb-8">
+            <Activity className="w-10 h-10 text-red-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-4">Something went wrong</h1>
+          <p className="text-white/60 mb-8 max-w-md">The application encountered an unexpected error. Please try refreshing the page.</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-8 py-4 rounded-full bg-white text-black font-bold tracking-widest hover:scale-105 transition-transform"
+          >
+            REFRESH PAGE
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
+  return (
+    <ErrorBoundary>
+      <AppContent />
+    </ErrorBoundary>
+  );
+}
+
+function AppContent() {
   const [idea, setIdea] = useState('');
   const [referenceImage, setReferenceImage] = useState<string | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<StyleOption[]>([]);
@@ -189,16 +233,32 @@ export default function App() {
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'CREATE' | 'HISTORY' | 'MOODBOARD' | 'UPGRADE'>('CREATE');
   const [history, setHistory] = useState<HistoryLog[]>(() => {
-    const saved = localStorage.getItem('imagigen_history');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('imagigen_history');
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      // Basic validation to ensure it's an array and has required fields
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter(log => log && log.id && log.prompts);
+    } catch (e) {
+      console.error("Failed to load history:", e);
+      return [];
+    }
   });
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const [restoreMessage, setRestoreMessage] = useState<string | null>(null);
   const [bgImage, setBgImage] = useState('');
   const [moodboardTrigger, setMoodboardTrigger] = useState<number>(0);
   const [moodboardImages, setMoodboardImages] = useState<any[]>(() => {
-    const saved = localStorage.getItem('imagigen_moodboard');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('imagigen_moodboard');
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.error("Failed to load moodboard history:", e);
+      return [];
+    }
   });
   const [moodboardQuery, setMoodboardQuery] = useState('');
   const [moodboardLoading, setMoodboardLoading] = useState(false);
@@ -224,12 +284,38 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  const safeSaveToLocalStorage = (key: string, data: any, limit: number = 20) => {
+    try {
+      let dataToSave = data;
+      if (Array.isArray(data) && data.length > limit) {
+        dataToSave = data.slice(0, limit);
+      }
+      localStorage.setItem(key, JSON.stringify(dataToSave));
+    } catch (e) {
+      if (e instanceof Error && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
+        console.warn(`Storage quota exceeded for ${key}. Pruning data...`);
+        // If it fails even with the limit, try to prune more aggressively
+        if (Array.isArray(data) && data.length > 1) {
+          const smallerLimit = Math.floor(data.length / 2);
+          safeSaveToLocalStorage(key, data.slice(0, smallerLimit), smallerLimit);
+        } else {
+          // If it's still failing, we might need to clear it or just stop saving
+          console.error("Critical storage failure. Cannot save data.");
+        }
+      } else {
+        console.error(`Failed to save to localStorage for ${key}:`, e);
+      }
+    }
+  };
+
   useEffect(() => {
-    localStorage.setItem('imagigen_history', JSON.stringify(history));
+    // Temporarily disabled to prevent storage errors as requested
+    // safeSaveToLocalStorage('imagigen_history', history, 15);
   }, [history]);
 
   useEffect(() => {
-    localStorage.setItem('imagigen_moodboard', JSON.stringify(moodboardImages));
+    // Temporarily disabled to prevent storage errors as requested
+    // safeSaveToLocalStorage('imagigen_moodboard', moodboardImages, 50);
   }, [moodboardImages]);
 
   const [userTier, setUserTier] = useState<'FREE' | 'PRO' | 'TEAM'>('FREE');
@@ -971,7 +1057,8 @@ export default function App() {
   const handleGenerateAll = async () => {
     if (!idea.trim()) return;
 
-    // Check for API Key if using paid models
+    // Check for API Key if using paid models - Temporarily disabled as requested
+    /*
     if (window.aistudio) {
       const hasKey = await window.aistudio.hasSelectedApiKey();
       if (!hasKey) {
@@ -979,6 +1066,7 @@ export default function App() {
         // After opening, we assume success as per instructions
       }
     }
+    */
     
     // Check Daily Limit for FREE users
     if (userTier === 'FREE' && generationCount >= 3) {
@@ -1067,10 +1155,19 @@ export default function App() {
       }
     } catch (error: any) {
       console.error("Overall generation failed:", error);
-      if (error.message?.includes('429') || error.message?.includes('quota')) {
-        alert('무료 티어 쿼터(일 20회)를 초과했거나 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.');
+      
+      // Handle API Key issues - Modal call disabled as requested
+      if (error.message?.includes('Requested entity was not found')) {
+        /*
+        if (window.aistudio) {
+          await window.aistudio.openSelectKey();
+        }
+        */
+        alert(lang === 'ko' ? 'API 키가 올바르지 않거나 만료되었습니다. 다시 선택해주세요.' : 'API Key is invalid or expired. Please select again.');
+      } else if (error.message?.includes('429') || error.message?.includes('quota')) {
+        alert(lang === 'ko' ? '무료 티어 쿼터(일 20회)를 초과했거나 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' : 'Quota exceeded or too many requests. Please try again later.');
       } else {
-        alert('생성에 실패했습니다. 다시 시도해주세요.');
+        alert(lang === 'ko' ? '생성에 실패했습니다. 다시 시도해주세요.' : 'Generation failed. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -1102,6 +1199,11 @@ export default function App() {
   const deleteHistory = (id: string) => {
     setHistory(prev => prev.filter(log => log.id !== id));
     if (selectedHistoryId === id) setSelectedHistoryId(null);
+  };
+
+  const clearAllHistory = () => {
+    setHistory([]);
+    setSelectedHistoryId(null);
   };
 
   // Map colors to names if they are in the palette, otherwise keep hex
@@ -1737,11 +1839,11 @@ export default function App() {
                             <div className="h-[220px] w-full">
                               <ResponsiveContainer width="100%" height="100%">
                                 <RadarChart cx="50%" cy="50%" outerRadius="70%" data={[
-                                  { subject: lang === 'ko' ? '깊이감' : 'Depth', A: result.insight.visual_balance.depth },
-                                  { subject: lang === 'ko' ? '현대성' : 'Modernity', A: result.insight.visual_balance.modernity },
-                                  { subject: lang === 'ko' ? '미학' : 'Aesthetic', A: result.insight.visual_balance.aesthetic },
-                                  { subject: lang === 'ko' ? '채도' : 'Vibrancy', A: result.insight.visual_balance.vibrancy },
-                                  { subject: lang === 'ko' ? '미니멀리즘' : 'Minimalism', A: result.insight.visual_balance.minimalism },
+                                  { subject: lang === 'ko' ? '깊이감' : 'Depth', A: result.insight?.visual_balance?.depth ?? 0 },
+                                  { subject: lang === 'ko' ? '현대성' : 'Modernity', A: result.insight?.visual_balance?.modernity ?? 0 },
+                                  { subject: lang === 'ko' ? '미학' : 'Aesthetic', A: result.insight?.visual_balance?.aesthetic ?? 0 },
+                                  { subject: lang === 'ko' ? '채도' : 'Vibrancy', A: result.insight?.visual_balance?.vibrancy ?? 0 },
+                                  { subject: lang === 'ko' ? '미니멀리즘' : 'Minimalism', A: result.insight?.visual_balance?.minimalism ?? 0 },
                                 ]}>
                                   <PolarGrid stroke="#ffffff20" />
                                   <PolarAngleAxis dataKey="subject" tick={{ fill: '#ffffff60', fontSize: 7 }} />
@@ -1759,9 +1861,9 @@ export default function App() {
                             <div className="h-[220px] w-full">
                               <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={[
-                                  { name: lang === 'ko' ? '반사율' : 'Reflectivity', value: result.insight.texture_density.reflectivity },
-                                  { name: lang === 'ko' ? '투명도' : 'Transparency', value: result.insight.texture_density.transparency },
-                                  { name: lang === 'ko' ? '거칠기' : 'Roughness', value: result.insight.texture_density.roughness },
+                                  { name: lang === 'ko' ? '반사율' : 'Reflectivity', value: result.insight?.texture_density?.reflectivity ?? 0 },
+                                  { name: lang === 'ko' ? '투명도' : 'Transparency', value: result.insight?.texture_density?.transparency ?? 0 },
+                                  { name: lang === 'ko' ? '거칠기' : 'Roughness', value: result.insight?.texture_density?.roughness ?? 0 },
                                 ]} layout="vertical">
                                   <XAxis type="number" hide domain={[0, 100]} />
                                   <YAxis dataKey="name" type="category" tick={{ fill: '#ffffff60', fontSize: 7 }} width={60} />
@@ -1782,13 +1884,13 @@ export default function App() {
                             <div className="flex items-center gap-1.5 text-[7px] tracking-widest text-white/40">
                               {t.temp}
                             </div>
-                            <span className="text-[10px] font-light text-white">{result.insight.tone_manner.temperature}</span>
+                            <span className="text-[10px] font-light text-white">{result.insight?.tone_manner?.temperature ?? 0}</span>
                           </div>
                           <div className="bg-white/5 p-3 rounded-xl border border-white/10 flex flex-col gap-1">
                             <div className="flex items-center gap-1.5 text-[7px] tracking-widest text-white/40">
                               {t.dyn}
                             </div>
-                            <span className="text-[10px] font-light text-white">{result.insight.tone_manner.dynamism}</span>
+                            <span className="text-[10px] font-light text-white">{result.insight?.tone_manner?.dynamism ?? 0}</span>
                           </div>
                         </div>
 
@@ -1797,7 +1899,7 @@ export default function App() {
                             {t.designIntent}
                           </div>
                           <p className="text-[10px] font-light text-white/80 leading-relaxed italic">
-                            "{result.designIntent}"
+                            "{result?.designIntent || (lang === 'ko' ? '디자인 의도를 생성 중입니다...' : 'Generating design intent...')}"
                           </p>
                         </div>
                       </motion.div>
@@ -1987,6 +2089,19 @@ export default function App() {
               </div>
             )}
 
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[10px] font-mono tracking-[0.3em] text-white/40 uppercase">
+                {lang === 'ko' ? `총 ${history.length}개의 기록` : `${history.length} TOTAL RECORDS`}
+              </h3>
+              <button 
+                onClick={clearAllHistory}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold tracking-widest hover:bg-red-500/20 transition-all"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {lang === 'ko' ? '전체 삭제' : 'CLEAR ALL'}
+              </button>
+            </div>
+
             <div className="space-y-8">
               {history.map((log) => (
                     <div 
@@ -2150,8 +2265,11 @@ export default function App() {
                 onUseStyle={(keywords) => {
                   setIdea(keywords);
                   setActiveTab('CREATE');
-                  // Scroll to top
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  try {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  } catch (e) {
+                    window.scrollTo(0, 0);
+                  }
                 }} 
               />
             </motion.div>
@@ -2277,10 +2395,10 @@ export default function App() {
                 
                 <div className="space-y-4">
                   <h3 className="text-3xl font-bold text-white tracking-tighter">
-                    {upgradeReason === 'limit' ? t.upgrade.limitReached : t.upgrade.proOnly}
+                    {upgradeReason === 'limit' ? t.limitReached : t.proOnly}
                   </h3>
                   <p className="text-white/80 text-sm leading-relaxed">
-                    {upgradeReason === 'limit' ? t.upgrade.limitReachedDesc : t.upgrade.proOnlyDesc}
+                    {upgradeReason === 'limit' ? t.limitReachedDesc : t.proOnlyDesc}
                   </p>
                 </div>
 
@@ -2292,7 +2410,7 @@ export default function App() {
                     }}
                     className="w-full py-5 rounded-2xl bg-white text-black text-[11px] font-bold tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all"
                   >
-                    {t.upgrade.upgradeBtn}
+                    {t.upgradeBtn}
                   </button>
                   <button
                     onClick={() => setShowUpgradeModal(false)}

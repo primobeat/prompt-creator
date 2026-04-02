@@ -38,7 +38,7 @@ const ImageCard: React.FC<ImageCardProps> = ({ img, searchQuery, onUseStyle, onE
 
   const displayKeywords = selectedOptions.length > 0 
     ? selectedOptions.slice(0, 2).join(' + ') + (selectedOptions.length > 2 ? '...' : '')
-    : img.alt_description.replace(' aesthetic reference', '').charAt(0).toUpperCase() + img.alt_description.replace(' aesthetic reference', '').slice(1);
+    : (img.alt_description || '').replace(' aesthetic reference', '').charAt(0).toUpperCase() + (img.alt_description || '').replace(' aesthetic reference', '').slice(1);
 
   return (
     <motion.div
@@ -99,8 +99,8 @@ export const Moodboard: React.FC<MoodboardProps> = ({
 
   const analyzeDNA = () => {
     // Prioritize current selections if they exist, otherwise fallback to history
-    const sourceOptions = selectedOptions.length > 0 ? selectedOptions : (history.length > 0 ? history[0].options : []);
-    const sourceIdea = selectedOptions.length > 0 ? currentIdea : (history.length > 0 ? history[0].subject : "");
+    const sourceOptions = selectedOptions.length > 0 ? selectedOptions : (history.length > 0 ? (history[0].options || []) : []);
+    const sourceIdea = selectedOptions.length > 0 ? currentIdea : (history.length > 0 ? (history[0].subject || "") : "");
 
     if (sourceOptions.length === 0 && !sourceIdea) return "";
 
