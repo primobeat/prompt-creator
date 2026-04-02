@@ -1,9 +1,6 @@
 {
   "version": 2,
   "rewrites": [
-    { "source": "/api/gemini/generate", "destination": "/api/gemini/generate.ts" },
-    { "source": "/api/gemini/analyze", "destination": "/api/gemini/analyze.ts" },
-    { "source": "/api/gemini/expand", "destination": "/api/gemini/expand.ts" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

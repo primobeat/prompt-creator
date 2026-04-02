@@ -309,13 +309,11 @@ function AppContent() {
   };
 
   useEffect(() => {
-    // Temporarily disabled to prevent storage errors as requested
-    // safeSaveToLocalStorage('imagigen_history', history, 15);
+    safeSaveToLocalStorage('imagigen_history', history, 15);
   }, [history]);
 
   useEffect(() => {
-    // Temporarily disabled to prevent storage errors as requested
-    // safeSaveToLocalStorage('imagigen_moodboard', moodboardImages, 50);
+    safeSaveToLocalStorage('imagigen_moodboard', moodboardImages, 50);
   }, [moodboardImages]);
 
   const [userTier, setUserTier] = useState<'FREE' | 'PRO' | 'TEAM'>('FREE');

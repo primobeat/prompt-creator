@@ -1,5 +1,13 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 
+const getAI = () => {
+  const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("Gemini API Key가 설정되지 않았습니다. Vercel 설정에서 GEMINI_API_KEY를 추가해주세요.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
+
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 2000): Promise<T> {
@@ -186,35 +194,26 @@ export async function generateWallpaper(
 `;
 
     const promptResponse = await withRetry(async () => {
-      const res = await fetch("/api/gemini/expand", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: {
-            parts: [
-              {
-                text: `사용자 아이디어: "${userIdea}"
+      const ai = getAI();
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: {
+          parts: [
+            {
+              text: `사용자 아이디어: "${userIdea}"
 스타일 옵션: [${options.join(', ')}]
 배경색: ${bgColors.join(', ')}
 오브젝트 색상: ${objectColors.join(', ')}
 카메라 각도: ${camera || 'Eye Level'}
 비율: ${aspectRatio}`,
-              },
-            ],
-          },
+            },
+          ],
+        },
+        config: {
           systemInstruction: promptSystemInstruction,
-        }),
+        },
       });
-      if (!res.ok) {
-        const errorText = await res.text();
-        try {
-          const errorJson = JSON.parse(errorText);
-          throw new Error(errorJson.error || errorText);
-        } catch (e) {
-          throw new Error(errorText);
-        }
-      }
-      return await res.json();
+      return response;
     });
 
     if (!promptResponse) {
@@ -227,28 +226,23 @@ export async function generateWallpaper(
   
   console.log("Image Prompt to use:", refinedPrompt);
 
-  // 2. Generate the image using the refined prompt via server
+  // 2. Generate the image using the refined prompt via SDK directly
   try {
     const response = await withRetry(async () => {
-      const res = await fetch("/api/gemini/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          refinedPrompt,
-          aspectRatio,
-          model: 'gemini-3.1-flash-image-preview'
-        }),
+      const ai = getAI();
+      const res = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-image-preview',
+        contents: {
+          parts: [{ text: refinedPrompt }],
+        },
+        config: {
+          imageConfig: {
+            aspectRatio: aspectRatio as any || "16:9",
+            imageSize: "1K" as any
+          },
+        },
       });
-      if (!res.ok) {
-        const errorText = await res.text();
-        try {
-          const errorJson = JSON.parse(errorText);
-          throw new Error(errorJson.error || errorText);
-        } catch (e) {
-          throw new Error(errorText);
-        }
-      }
-      return await res.json();
+      return res;
     });
     return extractImageFromResponse(response);
   } catch (err: any) {
@@ -256,25 +250,19 @@ export async function generateWallpaper(
     
     try {
       const fallbackResponse = await withRetry(async () => {
-        const res = await fetch("/api/gemini/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            refinedPrompt,
-            aspectRatio,
-            model: 'gemini-2.5-flash-image'
-          }),
+        const ai = getAI();
+        const res = await ai.models.generateContent({
+          model: 'gemini-2.5-flash-image',
+          contents: {
+            parts: [{ text: refinedPrompt }],
+          },
+          config: {
+            imageConfig: {
+              aspectRatio: aspectRatio as any || "16:9",
+            },
+          },
         });
-        if (!res.ok) {
-          const errorText = await res.text();
-          try {
-            const errorJson = JSON.parse(errorText);
-            throw new Error(errorJson.error || errorText);
-          } catch (e) {
-            throw new Error(errorText);
-          }
-        }
-        return await res.json();
+        return res;
       });
       return extractImageFromResponse(fallbackResponse);
     } catch (fallbackErr: any) {
@@ -369,25 +357,30 @@ export async function analyzeImage(image: string): Promise<ImageAnalysis> {
   };
 
   const response = await withRetry(async () => {
-    const res = await fetch("/api/gemini/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        image,
+    const ai = getAI();
+    const [mimeType, base64Data] = image.split(',');
+    const mime = mimeType.match(/:(.*?);/)?.[1] || 'image/png';
+
+    const res = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: {
+        parts: [
+          {
+            inlineData: {
+              data: base64Data || image,
+              mimeType: mime
+            }
+          },
+          { text: "이 이미지의 스타일 설정을 최대한 상세하게 분석해서 JSON으로 출력해줘." }
+        ]
+      },
+      config: {
         systemInstruction,
+        responseMimeType: "application/json",
         responseSchema
-      }),
-    });
-    if (!res.ok) {
-      const errorText = await res.text();
-      try {
-        const errorJson = JSON.parse(errorText);
-        throw new Error(errorJson.error || errorText);
-      } catch (e) {
-        throw new Error(errorText);
       }
-    }
-    return await res.json();
+    });
+    return res;
   });
 
   try {
@@ -497,25 +490,17 @@ export async function expandPrompt(
   };
 
   const response = await withRetry(async () => {
-    const res = await fetch("/api/gemini/expand", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents,
+    const ai = getAI();
+    const res = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents,
+      config: {
         systemInstruction,
+        responseMimeType: "application/json",
         responseSchema
-      }),
-    });
-    if (!res.ok) {
-      const errorText = await res.text();
-      try {
-        const errorJson = JSON.parse(errorText);
-        throw new Error(errorJson.error || errorText);
-      } catch (e) {
-        throw new Error(errorText);
       }
-    }
-    return await res.json();
+    });
+    return res;
   });
 
   try {
