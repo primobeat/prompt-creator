@@ -10,8 +10,9 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const app = express();
+
 async function startServer() {
-  const app = express();
   const PORT = 3000;
 
   app.use(express.json({ limit: '50mb' }));
@@ -40,7 +41,12 @@ async function startServer() {
         },
       });
 
-      res.json(response);
+      // Explicitly include text and candidates for the frontend
+      res.json({
+        text: response.text,
+        candidates: response.candidates,
+        usageMetadata: response.usageMetadata
+      });
     } catch (error: any) {
       console.error("Server Gemini Generate Error:", error);
       res.status(500).json({ error: error.message });
@@ -80,7 +86,11 @@ async function startServer() {
         }
       });
 
-      res.json(response);
+      res.json({
+        text: response.text,
+        candidates: response.candidates,
+        usageMetadata: response.usageMetadata
+      });
     } catch (error: any) {
       console.error("Server Gemini Analyze Error:", error);
       res.status(500).json({ error: error.message });
@@ -107,7 +117,11 @@ async function startServer() {
         }
       });
 
-      res.json(response);
+      res.json({
+        text: response.text,
+        candidates: response.candidates,
+        usageMetadata: response.usageMetadata
+      });
     } catch (error: any) {
       console.error("Server Gemini Expand Error:", error);
       res.status(500).json({ error: error.message });
@@ -121,6 +135,10 @@ async function startServer() {
       appType: "spa",
     });
     app.use(vite.middlewares);
+    
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
@@ -128,10 +146,8 @@ async function startServer() {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
 }
 
 startServer();
+
+export default app;

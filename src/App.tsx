@@ -1167,7 +1167,7 @@ function AppContent() {
       } else if (error.message?.includes('429') || error.message?.includes('quota')) {
         alert(lang === 'ko' ? '무료 티어 쿼터(일 20회)를 초과했거나 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' : 'Quota exceeded or too many requests. Please try again later.');
       } else {
-        alert(lang === 'ko' ? '생성에 실패했습니다. 다시 시도해주세요.' : 'Generation failed. Please try again.');
+        alert(lang === 'ko' ? `생성에 실패했습니다: ${error.message}` : `Generation failed: ${error.message}`);
       }
     } finally {
       setLoading(false);

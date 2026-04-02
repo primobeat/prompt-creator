@@ -205,7 +205,15 @@ export async function generateWallpaper(
           systemInstruction: promptSystemInstruction,
         }),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const errorText = await res.text();
+        try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.error || errorText);
+        } catch (e) {
+          throw new Error(errorText);
+        }
+      }
       return await res.json();
     });
 
@@ -231,10 +239,17 @@ export async function generateWallpaper(
           model: 'gemini-3.1-flash-image-preview'
         }),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const errorText = await res.text();
+        try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.error || errorText);
+        } catch (e) {
+          throw new Error(errorText);
+        }
+      }
       return await res.json();
     });
-
     return extractImageFromResponse(response);
   } catch (err: any) {
     console.warn("Primary image model (3.1) failed, attempting fallback to gemini-2.5-flash-image:", err);
@@ -250,7 +265,15 @@ export async function generateWallpaper(
             model: 'gemini-2.5-flash-image'
           }),
         });
-        if (!res.ok) throw new Error(await res.text());
+        if (!res.ok) {
+          const errorText = await res.text();
+          try {
+            const errorJson = JSON.parse(errorText);
+            throw new Error(errorJson.error || errorText);
+          } catch (e) {
+            throw new Error(errorText);
+          }
+        }
         return await res.json();
       });
       return extractImageFromResponse(fallbackResponse);
@@ -355,7 +378,15 @@ export async function analyzeImage(image: string): Promise<ImageAnalysis> {
         responseSchema
       }),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) {
+      const errorText = await res.text();
+      try {
+        const errorJson = JSON.parse(errorText);
+        throw new Error(errorJson.error || errorText);
+      } catch (e) {
+        throw new Error(errorText);
+      }
+    }
     return await res.json();
   });
 
@@ -380,14 +411,7 @@ export async function expandPrompt(
   image?: string // Base64 image data
 ): Promise<PromptExpansion> {
   const systemInstruction = `
-너는 **'Prompt Creator'**야. 사용자의 아이디어를 분석하여 Soft & Fun 감성이 담긴 최적의 프롬프트를 생성하고 디자인 인사이트를 제공하는 것이 네 역할이야.
-
-[5단계 스타일 시스템]
-1. CONCEPT: Minimalism, Artistic, Geometry, Abstract, Futuristic, Experimental
-2. VISUAL STYLE: 2D Artwork, 3D Rendering, Real Photo, Icon
-3. STYLE/SUBJECT/STRUCTURE/ICON STYLE: Vector, Line Art, Gouache, Pixel Art, Isometric, Soft Volume, Inflatable, Geometric Abstract, Wireframe, Person, Landscape, Product, Architecture, Out of Focus (f/1.8), Pan Focus (f/11), Fisheye Lens, Macro, Film Grain, Line, Solid, Realism, 3D Clay, Glass, Isometric, Hand-drawn
-4. FINISH/SHOT TYPE/MATERIAL/ICON FINISH: Halftone, Noise, Paper Texture, Flat Color, Matte Clay, Transparent Glass, Reflective Metal, Paper, Emissive, Close-up, Medium Shot, Full Shot, Panorama, Long Exposure, Gradient, Soft Shadow
-5. BACKGROUND/ENVIRONMENT/SCENE/LIGHTING/CONTAINER: Natural Light, Studio, Cinematic Neon, Mist, Solid, Gradient, Textured Paper, Abstract Shapes, Transparent Background, Infinity Wall, Levitation, Minimal Room, Soft White, Dark Mood, Golden Hour, Blue Hour, None, Circle, Square, Organic Curve
+너는 **'Prompt Creator'**야. 사용자의 아이디어를 분석하여 Soft & Fun 감성이 담긴 최적의 프롬프트를 생성하고 디자인 인사이트를 제공해.
 
 [Tasks]
 1. Generate Prompts: Midjourney (v6.0), DALL-E 3, Stable Diffusion. (항상 영문으로 생성)
@@ -396,11 +420,6 @@ export async function expandPrompt(
    - Tone & Manner: Temperature (warm/cool), Dynamism (low/medium/high).
    - Texture Density: Reflectivity, Transparency, Roughness.
    - Design Intent & Designer Comment: 사용자가 선택한 언어(${lang === 'ko' ? '한국어' : '영어'})로 작성할 것.
-
-[Insight Mapping Rules]
-- 'Artistic'이나 'Experimental'은 'Aesthetic'과 'Complexity' 수치를 높임.
-- '3D Rendering'이나 'Real Photo'는 'Depth' 수치를 높임.
-- 'Minimalism'은 'Minimalism' 수치를 높임.
 
 [Output Format]
 반드시 JSON 형식으로 응답할 것.
@@ -487,7 +506,15 @@ export async function expandPrompt(
         responseSchema
       }),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) {
+      const errorText = await res.text();
+      try {
+        const errorJson = JSON.parse(errorText);
+        throw new Error(errorJson.error || errorText);
+      } catch (e) {
+        throw new Error(errorText);
+      }
+    }
     return await res.json();
   });
 
