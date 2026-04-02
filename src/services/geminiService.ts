@@ -153,29 +153,10 @@ export async function generateWallpaper(
   aspectRatio: "1:1" | "3:4" | "4:3" | "9:16" | "16:9" = "16:9",
   preRefinedPrompt?: string
 ): Promise<string> {
-  // AI Studio 환경과 일반 Vite/Vercel 환경 모두 지원
-  let apiKey = "";
-  try {
-    // Vite의 define 또는 import.meta.env를 통해 주입된 키를 순차적으로 확인
-    apiKey = import.meta.env.VITE_GEMINI_API_KEY || 
-             process.env.GEMINI_API_KEY || 
-             process.env.API_KEY || 
-             "";
-    
-    if (!apiKey) {
-      console.warn("Gemini API Key not found in environment variables.");
-    }
-  } catch (e) {
-    console.warn("Error accessing environment variables:", e);
-  }
-  
-  const ai = new GoogleGenAI({ apiKey });
-  
   let refinedPrompt = preRefinedPrompt;
 
   if (!refinedPrompt) {
     // 1. First, use Gemini 3 Flash to generate a high-quality image prompt based on the user's rules
-    const promptModel = "gemini-3-flash-preview";
     const promptSystemInstruction = `
 너는 전세계 최고의 **'AI Image Prompt Engineer'**야. 
 사용자의 아이디어와 선택된 5단계 스타일 옵션을 바탕으로, 'Gemini 2.5 Flash Image (Nano Banana)' 모델이 가장 선호하는 고퀄리티 영문 프롬프트를 생성해줘.
@@ -204,24 +185,29 @@ export async function generateWallpaper(
 오직 생성된 영문 프롬프트 문자열만 출력해. 다른 설명은 생략해.
 `;
 
-    const promptResponse = await withRetry(() => ai.models.generateContent({
-      model: promptModel,
-      contents: {
-        parts: [
-          {
-            text: `사용자 아이디어: "${userIdea}"
+    const promptResponse = await withRetry(async () => {
+      const res = await fetch("/api/gemini/expand", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: {
+            parts: [
+              {
+                text: `사용자 아이디어: "${userIdea}"
 스타일 옵션: [${options.join(', ')}]
 배경색: ${bgColors.join(', ')}
 오브젝트 색상: ${objectColors.join(', ')}
 카메라 각도: ${camera || 'Eye Level'}
 비율: ${aspectRatio}`,
+              },
+            ],
           },
-        ],
-      },
-      config: {
-        systemInstruction: promptSystemInstruction,
-      },
-    }));
+          systemInstruction: promptSystemInstruction,
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return await res.json();
+    });
 
     if (!promptResponse) {
       console.warn("Gemini Prompt Generation: No response returned");
@@ -233,63 +219,45 @@ export async function generateWallpaper(
   
   console.log("Image Prompt to use:", refinedPrompt);
 
-  // 2. Generate the image using the refined prompt
+  // 2. Generate the image using the refined prompt via server
   try {
-    // Try Gemini 3.1 Flash Image (Paid Tier / High Quality) first
-    const response = await withRetry(() => ai.models.generateContent({
-      model: 'gemini-3.1-flash-image-preview',
-      contents: {
-        parts: [
-          {
-            text: refinedPrompt,
-          },
-        ],
-      },
-      config: {
-        imageConfig: {
-          aspectRatio: aspectRatio,
-          imageSize: "1K"
-        },
-      },
-    }));
+    const response = await withRetry(async () => {
+      const res = await fetch("/api/gemini/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          refinedPrompt,
+          aspectRatio,
+          model: 'gemini-3.1-flash-image-preview'
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return await res.json();
+    });
 
     return extractImageFromResponse(response);
   } catch (err: any) {
     console.warn("Primary image model (3.1) failed, attempting fallback to gemini-2.5-flash-image:", err);
     
-    // Fallback to gemini-2.5-flash-image if permission denied (no paid key) or quota exceeded
-    const isAuthOrQuotaError = 
-      err.message?.toLowerCase().includes('permission') || 
-      err.message?.toLowerCase().includes('quota') || 
-      err.message?.toLowerCase().includes('429') || 
-      err.message?.toLowerCase().includes('403') ||
-      err.message?.toLowerCase().includes('resource_exhausted');
-
-    if (isAuthOrQuotaError) {
-      try {
-        const fallbackResponse = await withRetry(() => ai.models.generateContent({
-          model: 'gemini-2.5-flash-image',
-          contents: {
-            parts: [
-              {
-                text: refinedPrompt,
-              },
-            ],
-          },
-          config: {
-            imageConfig: {
-              aspectRatio: aspectRatio,
-              // Note: gemini-2.5-flash-image does not support imageSize parameter
-            },
-          },
-        }));
-        return extractImageFromResponse(fallbackResponse);
-      } catch (fallbackErr: any) {
-        console.error("Fallback image generation also failed:", fallbackErr);
-        throw fallbackErr;
-      }
+    try {
+      const fallbackResponse = await withRetry(async () => {
+        const res = await fetch("/api/gemini/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            refinedPrompt,
+            aspectRatio,
+            model: 'gemini-2.5-flash-image'
+          }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        return await res.json();
+      });
+      return extractImageFromResponse(fallbackResponse);
+    } catch (fallbackErr: any) {
+      console.error("Fallback image generation also failed:", fallbackErr);
+      throw fallbackErr;
     }
-    throw err;
   }
 }
 
@@ -323,22 +291,6 @@ function extractImageFromResponse(response: any): string {
 }
 
 export async function analyzeImage(image: string): Promise<ImageAnalysis> {
-  let apiKey = "";
-  try {
-    apiKey = import.meta.env.VITE_GEMINI_API_KEY || 
-             process.env.GEMINI_API_KEY || 
-             process.env.API_KEY || 
-             "";
-  } catch (e) {
-    apiKey = "";
-  }
-  
-  const ai = new GoogleGenAI({ apiKey });
-  const model = "gemini-3-flash-preview";
-
-  const [mimeType, base64Data] = image.split(',');
-  const mime = mimeType.match(/:(.*?);/)?.[1] || 'image/png';
-
   const systemInstruction = `
 너는 이미지 분석 전문가야. 제공된 이미지를 분석하여 다음 카테고리별로 가장 잘 어울리는 값을 추출해줘.
 이미지의 느낌을 최대한 재현할 수 있도록 모든 카테고리에서 적절한 값을 선택해야 해.
@@ -372,44 +324,40 @@ export async function analyzeImage(image: string): Promise<ImageAnalysis> {
 - 반드시 JSON 형식으로 응답할 것.
 `;
 
-  const response = await withRetry(() => ai.models.generateContent({
-    model: model,
-    contents: {
-      parts: [
-        {
-          inlineData: {
-            data: base64Data || image,
-            mimeType: mime
-          }
-        },
-        { text: "이 이미지의 스타일 설정을 최대한 상세하게 분석해서 JSON으로 출력해줘." }
-      ]
+  const responseSchema = {
+    type: Type.OBJECT,
+    properties: {
+      camera: { type: Type.STRING },
+      ratio: { type: Type.STRING },
+      selectedOptions: { 
+        type: Type.ARRAY,
+        items: { type: Type.STRING }
+      },
+      bgColors: { 
+        type: Type.ARRAY,
+        items: { type: Type.STRING }
+      },
+      objColors: { 
+        type: Type.ARRAY,
+        items: { type: Type.STRING }
+      },
     },
-    config: {
-      systemInstruction: systemInstruction,
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          camera: { type: Type.STRING },
-          ratio: { type: Type.STRING },
-          selectedOptions: { 
-            type: Type.ARRAY,
-            items: { type: Type.STRING }
-          },
-          bgColors: { 
-            type: Type.ARRAY,
-            items: { type: Type.STRING }
-          },
-          objColors: { 
-            type: Type.ARRAY,
-            items: { type: Type.STRING }
-          },
-        },
-        required: ["camera", "ratio", "selectedOptions", "bgColors", "objColors"],
-      }
-    }
-  }));
+    required: ["camera", "ratio", "selectedOptions", "bgColors", "objColors"],
+  };
+
+  const response = await withRetry(async () => {
+    const res = await fetch("/api/gemini/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        image,
+        systemInstruction,
+        responseSchema
+      }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return await res.json();
+  });
 
   try {
     const text = response.text;
@@ -431,19 +379,6 @@ export async function expandPrompt(
   lang: 'en' | 'ko' = 'ko',
   image?: string // Base64 image data
 ): Promise<PromptExpansion> {
-  let apiKey = "";
-  try {
-    apiKey = import.meta.env.VITE_GEMINI_API_KEY || 
-             process.env.GEMINI_API_KEY || 
-             process.env.API_KEY || 
-             "";
-  } catch (e) {
-    apiKey = "";
-  }
-  
-  const ai = new GoogleGenAI({ apiKey });
-  const model = "gemini-3-flash-preview";
-  
   const systemInstruction = `
 너는 **'Prompt Creator'**야. 사용자의 아이디어를 분석하여 Soft & Fun 감성이 담긴 최적의 프롬프트를 생성하고 디자인 인사이트를 제공하는 것이 네 역할이야.
 
@@ -495,60 +430,66 @@ export async function expandPrompt(
     });
   }
 
-  const response = await withRetry(() => ai.models.generateContent({
-    model: model,
-    contents: contents,
-    config: {
-      systemInstruction: systemInstruction,
-      responseMimeType: "application/json",
-      responseSchema: {
+  const responseSchema = {
+    type: Type.OBJECT,
+    properties: {
+      midjourney: { type: Type.STRING },
+      dalle: { type: Type.STRING },
+      stableDiffusion: { type: Type.STRING },
+      designIntent: { type: Type.STRING },
+      insight: {
         type: Type.OBJECT,
         properties: {
-          midjourney: { type: Type.STRING },
-          dalle: { type: Type.STRING },
-          stableDiffusion: { type: Type.STRING },
-          designIntent: { type: Type.STRING },
-          insight: {
+          visual_balance: {
             type: Type.OBJECT,
             properties: {
-              visual_balance: {
-                type: Type.OBJECT,
-                properties: {
-                  depth: { type: Type.NUMBER },
-                  modernity: { type: Type.NUMBER },
-                  aesthetic: { type: Type.NUMBER },
-                  vibrancy: { type: Type.NUMBER },
-                  minimalism: { type: Type.NUMBER },
-                  geometry: { type: Type.NUMBER },
-                },
-                required: ["depth", "modernity", "aesthetic", "vibrancy", "minimalism", "geometry"],
-              },
-              tone_manner: {
-                type: Type.OBJECT,
-                properties: {
-                  temperature: { type: Type.STRING },
-                  dynamism: { type: Type.STRING },
-                },
-                required: ["temperature", "dynamism"],
-              },
-              texture_density: {
-                type: Type.OBJECT,
-                properties: {
-                  reflectivity: { type: Type.NUMBER },
-                  transparency: { type: Type.NUMBER },
-                  roughness: { type: Type.NUMBER },
-                },
-                required: ["reflectivity", "transparency", "roughness"],
-              },
-              designer_comment: { type: Type.STRING },
+              depth: { type: Type.NUMBER },
+              modernity: { type: Type.NUMBER },
+              aesthetic: { type: Type.NUMBER },
+              vibrancy: { type: Type.NUMBER },
+              minimalism: { type: Type.NUMBER },
+              geometry: { type: Type.NUMBER },
             },
-            required: ["visual_balance", "tone_manner", "texture_density", "designer_comment"],
+            required: ["depth", "modernity", "aesthetic", "vibrancy", "minimalism", "geometry"],
           },
+          tone_manner: {
+            type: Type.OBJECT,
+            properties: {
+              temperature: { type: Type.STRING },
+              dynamism: { type: Type.STRING },
+            },
+            required: ["temperature", "dynamism"],
+          },
+          texture_density: {
+            type: Type.OBJECT,
+            properties: {
+              reflectivity: { type: Type.NUMBER },
+              transparency: { type: Type.NUMBER },
+              roughness: { type: Type.NUMBER },
+            },
+            required: ["reflectivity", "transparency", "roughness"],
+          },
+          designer_comment: { type: Type.STRING },
         },
-        required: ["midjourney", "dalle", "stableDiffusion", "designIntent", "insight"],
+        required: ["visual_balance", "tone_manner", "texture_density", "designer_comment"],
       },
     },
-  }));
+    required: ["midjourney", "dalle", "stableDiffusion", "designIntent", "insight"],
+  };
+
+  const response = await withRetry(async () => {
+    const res = await fetch("/api/gemini/expand", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents,
+        systemInstruction,
+        responseSchema
+      }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return await res.json();
+  });
 
   try {
     const text = response.text;
