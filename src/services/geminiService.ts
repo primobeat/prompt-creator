@@ -230,15 +230,15 @@ export async function generateWallpaper(
   try {
     const response = await withRetry(async () => {
       const ai = getAI();
+      // Use gemini-2.5-flash-image as primary for better free-tier availability
       const res = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-image-preview',
+        model: 'gemini-2.5-flash-image',
         contents: {
           parts: [{ text: refinedPrompt }],
         },
         config: {
           imageConfig: {
             aspectRatio: aspectRatio as any || "16:9",
-            imageSize: "1K" as any
           },
         },
       });
@@ -246,27 +246,28 @@ export async function generateWallpaper(
     });
     return extractImageFromResponse(response);
   } catch (err: any) {
-    console.warn("Primary image model (3.1) failed, attempting fallback to gemini-2.5-flash-image:", err);
+    console.warn("Primary image model (2.5) failed, attempting fallback to gemini-3.1-flash-image-preview:", err);
     
     try {
       const fallbackResponse = await withRetry(async () => {
         const ai = getAI();
         const res = await ai.models.generateContent({
-          model: 'gemini-2.5-flash-image',
+          model: 'gemini-3.1-flash-image-preview',
           contents: {
             parts: [{ text: refinedPrompt }],
           },
           config: {
             imageConfig: {
               aspectRatio: aspectRatio as any || "16:9",
+              imageSize: "1K" as any
             },
           },
         });
         return res;
-      });
+      }, 1, 1000); // Fewer retries for fallback to avoid long waits
       return extractImageFromResponse(fallbackResponse);
     } catch (fallbackErr: any) {
-      console.error("Fallback image generation also failed:", fallbackErr);
+      console.error("All image generation models failed:", fallbackErr);
       throw fallbackErr;
     }
   }
