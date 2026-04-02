@@ -1101,7 +1101,10 @@ function AppContent() {
       setResult(promptRes);
       setLoading(false);
 
-      // 2. Then generate the image using the DALL-E prompt from the expansion to save an API call
+      // 2. Add a small delay to avoid hitting rate limits between calls
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // 3. Then generate the image using the DALL-E prompt from the expansion to save an API call
       let imageUrl: string | null = null;
       try {
         imageUrl = await generateWallpaper(
@@ -1116,10 +1119,14 @@ function AppContent() {
         setGeneratedImage(imageUrl);
       } catch (err: any) {
         console.error("Image generation failed:", err);
-        if (err.message?.includes('429') || err.message?.includes('quota')) {
-          setImageError(lang === 'ko' ? '무료 티어 쿼터(일 20회)를 초과했습니다. 내일 다시 시도해주세요.' : 'Free tier quota exceeded. Please try again tomorrow.');
+        const isQuotaError = err.message?.includes('429') || err.message?.includes('quota') || err.message?.includes('RESOURCE_EXHAUSTED');
+        
+        if (isQuotaError) {
+          setImageError(lang === 'ko' 
+            ? '현재 사용 중인 API 키의 무료 생성 한도를 초과했습니다. 잠시 후 다시 시도하거나, 다른 API 키를 설정해 주세요.' 
+            : 'API quota exceeded for the current key. Please try again later or check your API billing status.');
         } else {
-          setImageError(lang === 'ko' ? '이미지 생성에 실패했습니다.' : 'Image generation failed.');
+          setImageError(lang === 'ko' ? `이미지 생성 실패: ${err.message || '알 수 없는 오류'}` : `Image generation failed: ${err.message || 'Unknown error'}`);
         }
       } finally {
         setGeneratingImage(false);
@@ -1162,13 +1169,53 @@ function AppContent() {
         }
         */
         alert(lang === 'ko' ? 'API 키가 올바르지 않거나 만료되었습니다. 다시 선택해주세요.' : 'API Key is invalid or expired. Please select again.');
-      } else if (error.message?.includes('429') || error.message?.includes('quota')) {
-        alert(lang === 'ko' ? '무료 티어 쿼터(일 20회)를 초과했거나 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' : 'Quota exceeded or too many requests. Please try again later.');
+      } else if (error.message?.includes('429') || error.message?.includes('quota') || error.message?.includes('RESOURCE_EXHAUSTED')) {
+        alert(lang === 'ko' ? 'API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.' : 'API request limit exceeded. Please try again later.');
       } else {
         alert(lang === 'ko' ? `생성에 실패했습니다: ${error.message}` : `Generation failed: ${error.message}`);
       }
     } finally {
       setLoading(false);
+      setGeneratingImage(false);
+    }
+  };
+
+  const handleRetryImage = async () => {
+    if (!result || !idea) return;
+    
+    setGeneratingImage(true);
+    setImageError(null);
+    
+    try {
+      // Small delay before retry
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const imageUrl = await generateWallpaper(
+        idea, 
+        selectedOptions, 
+        formatColors(selectedBgColors), 
+        formatColors(selectedObjectColors), 
+        selectedCamera,
+        selectedRatio as any,
+        result.dalle
+      );
+      setGeneratedImage(imageUrl);
+      
+      // Update history with the new image
+      setHistory(prev => prev.map(log => 
+        log.prompts.dalle === result.dalle ? { ...log, generatedImage: imageUrl } : log
+      ));
+    } catch (err: any) {
+      console.error("Image retry failed:", err);
+      const isQuotaError = err.message?.includes('429') || err.message?.includes('quota') || err.message?.includes('RESOURCE_EXHAUSTED');
+      if (isQuotaError) {
+        setImageError(lang === 'ko' 
+          ? 'API 생성 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.' 
+          : 'API quota exceeded. Please try again in a moment.');
+      } else {
+        setImageError(lang === 'ko' ? `이미지 생성 실패: ${err.message}` : `Image generation failed: ${err.message}`);
+      }
+    } finally {
       setGeneratingImage(false);
     }
   };
@@ -1950,14 +1997,21 @@ function AppContent() {
                                 </div>
                               </>
                             ) : imageError ? (
-                              <div className="flex flex-col items-center gap-4 text-center p-10">
+                              <div className="flex flex-col items-center gap-6 text-center p-10">
                                 <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
                                   <ImageIcon className="w-6 h-6 text-white/20" />
                                 </div>
-                                <div className="space-y-1">
-                                  <p className="text-[11px] text-white/60 tracking-widest">{lang === 'ko' ? '이미지 생성 불가' : 'Image Generation Unavailable'}</p>
+                                <div className="space-y-2">
+                                  <p className="text-[11px] text-white/60 tracking-widest uppercase">{lang === 'ko' ? '이미지 생성 불가' : 'Image Generation Unavailable'}</p>
                                   <p className="text-[10px] text-white/40 leading-relaxed max-w-[240px]">{imageError}</p>
                                 </div>
+                                <button 
+                                  onClick={handleRetryImage}
+                                  className="px-6 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl text-white text-[10px] font-medium transition-all flex items-center gap-2 active:scale-95"
+                                >
+                                  <RefreshCw className="w-3.5 h-3.5" />
+                                  {lang === 'ko' ? '다시 시도' : 'Retry Generation'}
+                                </button>
                               </div>
                             ) : null}
                           </div>
